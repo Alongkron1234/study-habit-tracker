@@ -1,0 +1,76 @@
+# Requirements Traceability Matrix (Part B)
+
+**ผลิตภัณฑ์:** Study Habit Tracker | **อ้างอิง:** SRS v0.2 และ `features.md` v0.1 | **เวอร์ชัน:** 0.1 (ร่าง)
+
+อ่านตารางจากซ้ายไปขวา: ความต้องการ → feature ที่รับผิดชอบ → sprint ที่สร้าง → วิธีและ sprint ที่ตรวจสอบ
+สถานะ AC/Test ของ Sprint 1 จะกรอกเลขจริงและผลการรันใน Part E–F ส่วน Sprint 2–3 กรอกก่อน implement แต่ละ feature
+
+## 1. Functional Requirements
+
+| Requirement | Feature | Sprint (สร้าง) | วิธีตรวจสอบ (วางแผน) | Sprint (ตรวจ) | สถานะ |
+|---|---|---|---|---|---|
+| FR-01 login | F-01 | 1 | API integration: login ถูก/ผิด | 1 | วางแผน |
+| FR-02 logout | F-01 | 1 | API integration: ใช้ session หลัง logout ไม่ได้ | 1 | วางแผน |
+| FR-03 ผู้ใช้ปัจจุบัน | F-01 | 1 | API integration | 1 | วางแผน |
+| FR-04 PM สร้างแม่แบบ | F-03 | 1 | API integration + persistence | 1 | วางแผน |
+| FR-05 PM ดูรายการแม่แบบ | F-03 | 1 | API integration | 1 | วางแผน |
+| FR-06 Participant ดูแม่แบบ | F-03 | 1 | API integration | 1 | วางแผน |
+| FR-07 ตั้งเป้าหมาย | F-04 | 1 | API integration + unit | 1 | วางแผน |
+| FR-08 บันทึกรายวัน | F-05 | 1 | API integration + E2E journey | 1 | วางแผน |
+| FR-09 ดูความคืบหน้า | F-06 | 1 | Unit (คำนวณ) + API | 1 | วางแผน |
+| FR-10 ดูประวัติ | F-06 | 1 | API integration | 1 | วางแผน |
+| FR-11 แก้ไข/archive แม่แบบ | F-09 | 2 | กำหนดก่อน implement | 2 | วางแผน |
+| FR-12 แก้ไขเป้าหมาย | F-10 | 2 | กำหนดก่อน implement | 2 | วางแผน |
+| FR-13 แก้ไข/ลบ entry | F-11 | 2 | กำหนดก่อน implement | 2 | วางแผน |
+| FR-14 streak | F-13 | 3 | กำหนดก่อน implement | 3 | วางแผน |
+| FR-15 สรุปและกรอง | F-14 | 3 | กำหนดก่อน implement | 3 | วางแผน |
+| FR-16 ตารางเตือน | F-15 | 3 | กำหนดก่อน implement | 3 | วางแผน |
+
+## 2. Business Rules
+
+| Requirement | Feature | Sprint (สร้าง) | วิธีตรวจสอบ (วางแผน) | Sprint (ตรวจ) | สถานะ |
+|---|---|---|---|---|---|
+| BR-01 1 entry ต่อวัน | F-05 (คงไว้ใน F-11) | 1 | Unit + DB integration (unique) | 1 | วางแผน |
+| BR-02 ช่วงค่า entry | F-03 (นิยาม), F-05 (บังคับ) | 1 | Unit boundary: 0, 1, 960, 961, ทศนิยม | 1 | วางแผน |
+| BR-03 ช่วงวันที่ entry | F-05 | 1 | Unit boundary: วันนี้, พรุ่งนี้, ย้อน 7 และ 8 วัน, นอกช่วงเป้าหมาย | 1 | วางแผน |
+| BR-04 เงื่อนไขเป้าหมาย | F-04 | 1 | Unit boundary | 1 | วางแผน |
+| BR-05 สถานะเป้าหมาย / 1 active ต่อแม่แบบ | F-04, F-05 | 1 | Unit + API (entry หลังสิ้นสุด, เป้าหมายซ้อน) | 1 | วางแผน |
+| BR-06 คำนวณความคืบหน้า | F-06 | 1 | Unit (รวม case เกินเป้า) | 1 | วางแผน |
+| BR-07 เฉพาะ PM จัดการแม่แบบ | F-02, F-03 | 1 | API role test | 1 | วางแผน |
+| BR-08 ข้อมูลเป็นของเจ้าของ / PM อ่านไม่ได้ | F-02, F-04, F-05, F-06 | 1 | API ownership + role test | 1 | วางแผน |
+| BR-09 หน่วยคงที่ | F-03, F-05 | 1 | Unit | 1 | วางแผน |
+
+## 3. Non-Functional Requirements
+
+| Requirement | Feature / ความรับผิดชอบ | Sprint (สร้าง) | วิธีตรวจสอบ (วางแผน) | Sprint (ตรวจ) | สถานะ |
+|---|---|---|---|---|---|
+| NFR-01 ไม่มี session → 401 | F-01, F-02 | 1 | API test ครอบคลุมทุก endpoint ที่ป้องกัน | 1 (ทดสอบซ้ำทุก sprint) | วางแผน |
+| NFR-02 hash รหัสผ่าน | F-01 | 1 | Integration บน DB + ตรวจโค้ด | 1 | วางแผน |
+| NFR-03 session หมดอายุ 8 ชม. | F-01 | 1 | API test ด้วย token หมดอายุ/ถูกเพิกถอน | 1 | วางแผน |
+| NFR-04 ข้อมูลอยู่รอดหลังรีสตาร์ต | F-07 | 1 | Integration: เขียน → รีสตาร์ต → อ่าน | 1 | วางแผน |
+| NFR-05 ส่งพร้อมกันเหลือ 1 entry | F-05 (พึ่ง F-07) | 1 | Integration คำขอขนาน | 1 | วางแผน |
+| NFR-06 error ไม่เปิดเผยข้อมูลภายใน | F-02 | 1 | API test ตรวจรูปแบบ error | 1 | วางแผน |
+| NFR-07 ติดตั้งใน 15 นาที | F-08 | 1 | เพื่อนทำตาม README บนเครื่องสะอาด | 1 | วางแผน |
+| NFR-08 ไม่ commit secret | F-08 | 1 | สแกน repo + review | 1 | วางแผน |
+| NFR-09 p95 < 500 ms | F-12 | 2 | สคริปต์จับเวลา | 2 | วางแผน |
+| NFR-10 รันใน container | F-16 | Lab 5 | Docker build/run | Lab 5 | วางแผน |
+
+## 4. ตรวจความครอบคลุม (Coverage check)
+
+| รายการ | จำนวนใน SRS | ผูกกับ feature แล้ว | ยังไม่ครอบคลุม |
+|---|---|---|---|
+| FR | 16 | 16 | 0 |
+| BR | 9 | 9 | 0 |
+| NFR | 10 | 10 | 0 |
+
+ข้อสังเกต
+- **Sprint 1** ครอบคลุม FR-01 ถึง FR-10, BR ทั้ง 9 ข้อ (ใช้ครั้งแรกใน Sprint 1) และ NFR-01 ถึง NFR-08
+- BR-01, BR-02, BR-03 ถูกใช้ซ้ำใน F-11 (Sprint 2) จึงต้องมี regression test ว่ากฎยังบังคับหลังเพิ่มการแก้ไข entry
+- NFR-01 และ BR-08 ใช้กับ endpoint ใหม่ทุกตัวใน Sprint 2–3 ต้องเพิ่มการทดสอบทุกครั้งที่เพิ่ม endpoint
+- NFR-10 ไม่ใช่งานของ Deliverable 1 ประเมินใน Lab 5
+
+## 5. การเปลี่ยนแปลงที่ตกลงกันแล้ว (Approved changes)
+
+| วันที่ | การเปลี่ยนแปลง | เหตุผล | ผลต่อ traceability |
+|---|---|---|---|
+| 2 พ.ย. 2026 | SRS v0.1 → v0.2: เลข FR เปลี่ยนเป็น FR-01 ถึง FR-16, เพิ่ม BR-04/05 ใหม่ (นิยามเป้าหมาย), เพิ่ม NFR-05/06 | ปิดความกำกวมก่อนเริ่ม traceability | ตารางนี้อ้างเลขของ v0.2 ทั้งหมด |
