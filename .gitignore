@@ -1,0 +1,32 @@
+# secrets และ config ในเครื่อง
+.env
+.env.*
+!.env.example
+
+# dependency และ build
+node_modules/
+dist/
+build/
+.next/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ฐานข้อมูลในเครื่อง
+*.sqlite
+*.sqlite3
+*.db
+
+# เทสต์และ coverage
+coverage/
+.pytest_cache/
+playwright-report/
+test-results/
+
+# ระบบปฏิบัติการและ editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
