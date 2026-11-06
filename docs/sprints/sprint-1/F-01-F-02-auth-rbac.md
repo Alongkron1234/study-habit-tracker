@@ -145,11 +145,11 @@ Level ทั้งหมดเป็น **API integration** (supertest + Postgre
 
 ## 5. Definition of Done และหลักฐาน
 
-- [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก)
-- [ ] เทสต์ทุกข้อใน §4 เขียนก่อนโค้ดและบันทึกผลรัน **fail** พร้อม commit (หลักฐาน TDD)
-- [ ] โค้ดครบตาม §2 และ `npm test` ผ่านทุกเทสต์ พร้อมแนบ output และ commit ที่ทดสอบ
-- [ ] เทสต์ของ F-07 (11 ข้อ) ยังผ่านเหมือนเดิม (regression)
-- [ ] ไม่มี `password_hash` / secret ใน response หรือ log ตรวจจากเทสต์ TEST-F01-01 และอ่านโค้ด
+- [x] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — `cd59e8c`
+- [x] เทสต์ทุกข้อใน §4 เขียนก่อนโค้ดและบันทึกผลรัน **fail** พร้อม commit (หลักฐาน TDD) — เทสต์ `acb62a5`, ผลรัน `evidence/F-01-F-02-red-run.txt` (ล้ม 29 จาก 33 ข้อใหม่; 4 ข้อที่ผ่านอธิบายไว้ในไฟล์)
+- [x] โค้ดครบตาม §2 และ `npm test` ผ่านทุกเทสต์ พร้อมแนบ output และ commit ที่ทดสอบ — โค้ด `c7c0508`, ผลรัน `evidence/F-01-F-02-green-run.txt` (44/44)
+- [x] เทสต์ของ F-07 (11 ข้อ) ยังผ่านเหมือนเดิม (regression) — รวมอยู่ใน 44/44
+- [x] ไม่มี `password_hash` / secret ใน response หรือ log ตรวจจาก TEST-F01-01 (response มีแค่ `id, username, role`) และอ่านโค้ด
 - [ ] README เพิ่มวิธีลอง login ด้วยบัญชี seed (ไม่ใส่รหัสผ่านจริงใน Git)
 - [ ] `docs/traceability.md` อัปเดตสถานะแถว FR-01–03, BR-07, BR-08, NFR-01–03, NFR-06 ด้วยเลข AC/TEST
 - [ ] PR เข้า `sprint-1-staging` ผ่าน review จาก @atiwit (ผู้เขียนไม่อนุมัติเอง)
