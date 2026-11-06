@@ -111,7 +111,7 @@ session, schema_migrations       ตารางระบบ (ไม่มี FK
 - ไม่มี `ON DELETE CASCADE`: ลบ goal ที่มี entry ไม่ได้ เพื่อกันประวัติหายเงียบๆ
 
 ### 2.3 เวลาและวันที่
-ใช้ปฏิทิน Asia/Bangkok (A-02) เก็บวันที่เป็นชนิด `DATE` กฎเรื่อง "วันนี้" คำนวณจากเวลาเซิร์ฟเวอร์ (`TZ=Asia/Bangkok`) **แผนสำหรับ F-04/F-05:** ตั้ง type parser ของ `pg` ให้คืนค่า `DATE` เป็นสตริง `YYYY-MM-DD` เพื่อเลี่ยงการเลื่อนวันจากเขตเวลา (ยังไม่ได้ทำใน `db.js`)
+ใช้ปฏิทิน Asia/Bangkok (A-02) เก็บวันที่เป็นชนิด `DATE` กฎเรื่อง "วันนี้" คำนวณจากเวลาเซิร์ฟเวอร์ (`TZ=Asia/Bangkok`) **แผนสำหรับ F-04/F-05:** ตั้ง type parser ของ `pg` ให้คืนค่า `DATE` เป็นสตริง `YYYY-MM-DD` เพื่อเลี่ยงการเลื่อนวันจากเขตเวลา (ทำแล้วใน `db.js` พร้อม F-04, PR #9)
 
 ### 2.4 Setup ฐานข้อมูล (ทำแล้ว)
 - **Migration:** `npm run migrate` อ่าน `src/db/migrations/*.sql` ตามลำดับ บันทึกใน `schema_migrations` รันซ้ำได้ (ข้ามไฟล์ที่ apply แล้ว) แต่ละไฟล์อยู่ใน transaction
@@ -157,15 +157,16 @@ session, schema_migrations       ตารางระบบ (ไม่มี FK
 | `POST /api/auth/login` | สาธารณะ | F-01 | ทำแล้ว |
 | `POST /api/auth/logout` | ต้อง login | F-01 | ทำแล้ว |
 | `GET /api/auth/me` | ต้อง login | F-01 | ทำแล้ว |
-| `POST /api/templates` | PM | F-03 | แผน |
-| `GET /api/templates` | PM (ของตน) / Participant (ที่ใช้ได้) | F-03 | แผน |
-| `POST /api/goals` | Participant | F-04 | แผน |
-| `GET /api/goals` | Participant (ของตน) | F-04 | แผน |
-| `GET /api/goals/:id` | Participant (เจ้าของ) | F-04 | แผน |
+| `POST /api/templates` | PM | F-03 | ทำแล้ว (PR #9) |
+| `GET /api/templates` | PM (ของตน) / Participant (ที่ใช้ได้) | F-03 | ทำแล้ว (PR #9) |
+| `POST /api/goals` | Participant | F-04 | ทำแล้ว (PR #9) |
+| `GET /api/goals` | Participant (ของตน) | F-04 | ทำแล้ว (PR #9) |
+| `GET /api/goals/:id` | Participant (เจ้าของ) | F-04 | ทำแล้ว (PR #9) |
 | `POST /api/goals/:id/entries` | Participant (เจ้าของ) | F-05 | แผน |
 | `GET /api/goals/:id/entries` | Participant (เจ้าของ) | F-06 | แผน |
 | `GET /api/goals/:id/progress` | Participant (เจ้าของ) | F-06 | แผน |
 
+endpoint F-03/F-04 ทำแล้วตาม `docs/sprints/sprint-1/F-03-F-04-templates-goals.md` (รอ merge PR #9)
 ตาราง "แผน" เป็นร่าง รูปแบบ request/response และรหัสสถานะที่แน่นอนกำหนดใน contract ของ feature นั้นก่อน implement endpoint ของ F-01 ใช้ตาม `docs/sprints/sprint-1/F-01-F-02-auth-rbac.md`
 
 ### 4.3 รูปแบบ error ที่ปลอดภัย (NFR-06) — ทำแล้ว
