@@ -1,8 +1,9 @@
 # secrets และ config ในเครื่อง
 .env
-
-!.env.test.example
+.env.*
+*.env
 !.env.example
+!.env.test.example
 
 # dependency และ build
 node_modules/

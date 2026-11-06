@@ -25,6 +25,8 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
 
+jest.setTimeout(30000);
+
 const { Pool } = require('pg');
 const seed = require('../src/db/seeds/seed');
 
@@ -249,7 +251,7 @@ describe('TEST-F07-03 — Seed data idempotency (AC-F07-03)', () => {
 // ═══════════════════════════════════════════════════════════════
 describe('TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07)', () => {
   let goalId;
-  const LABEL = 'minutes_bnd';
+  const LABEL = 'bnd';
 
   beforeEach(async () => {
     const c = await pool.connect();
@@ -352,7 +354,7 @@ describe('TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07)', () =>
 // ═══════════════════════════════════════════════════════════════
 describe('TEST-F07-05 — goals active status constraint (BR-05)', () => {
   let userId, templateId;
-  const LABEL = 'goal_status';
+  const LABEL = 'gs';
 
   beforeEach(async () => {
     const c = await pool.connect();

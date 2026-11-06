@@ -101,7 +101,7 @@ F-08 ทำหน้าที่ให้ผู้พัฒนาหรือ re
 - [x] ไม่มี `.env` หรือ secret ใน commit (ตรวจจาก `.gitignore`)
 - [x] Error handler ไม่เปิดเผยรายละเอียดข้อผิดพลาดภายใน (NFR-06)
 - [x] `README.md` มีขั้นตอน Setup ครบตรงกับการทำงานจริงของโค้ด พร้อมคำเตือนเรื่อง drop DB หากเคย migrate รุ่นเก่า (NFR-07)
-- [ ] `npm test` ผ่านทุก test cases พร้อมแนบผลรันใน PR (หลักฐาน TDD)
+- [x] `npm test` ผ่านทุก test cases (11/11 tests pass) พร้อมแนบผลรันใน PR (หลักฐาน TDD)
 - [ ] เพื่อนร่วมทีมทำตาม README บนเครื่องสะอาดสำเร็จภายใน 15 นาที (AC-F08-01)
 - [ ] PR เข้า `sprint-1-staging` ผ่าน review จาก @atiwit
 
