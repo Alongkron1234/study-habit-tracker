@@ -3,29 +3,29 @@
  *
  * Tests for NFR-04, NFR-05 (unique constraint), BR-01, BR-02, BR-05, D-07.
  * Verifies:
- *   - TEST-F07-01: data written to DB persists after full pool shutdown and reconnect (simulates restart, NFR-04)
- *   - TEST-F07-02a: initial habit entry insert succeeds (NFR-05, BR-01)
- *   - TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code '23505' (NFR-05, BR-01)
- *   - TEST-F07-02c: different entry dates on the same goal both succeed (NFR-05, BR-01)
+ *   - TEST-F07-01: data written to DB persists after full pool shutdown and reconnect (simulates restart, NFR-04, AC-F07-01)
+ *   - TEST-F07-02a: initial habit entry insert succeeds (NFR-05, BR-01, AC-F07-02)
+ *   - TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code '23505' (NFR-05, BR-01, AC-F07-02)
+ *   - TEST-F07-02c: different entry dates on the same goal both succeed (NFR-05, BR-01, AC-F07-02)
  *   - TEST-F07-03: seed data execution is idempotent across multiple runs (AC-F07-03)
- *   - TEST-F07-04a: minutes = 0 is rejected by DB check constraint with code '23514' (BR-02, D-07)
- *   - TEST-F07-04b: minutes = 1 (minimum) is accepted (BR-02)
- *   - TEST-F07-04c: minutes = 960 (platform ceiling) is accepted (BR-02)
- *   - TEST-F07-04d: minutes = 961 (above ceiling) is rejected by DB check constraint with code '23514' (BR-02)
- *   - TEST-F07-05a: multiple ended goals for the same user and template are allowed (BR-05)
- *   - TEST-F07-05b: second active goal on the same template is rejected with code '23505' (BR-05)
+ *   - TEST-F07-04a: minutes = 0 is rejected by DB check constraint with code '23514' (BR-02, D-07, AC-F07-04)
+ *   - TEST-F07-04b: minutes = 1 (minimum allowed) is accepted (BR-02, AC-F07-04)
+ *   - TEST-F07-04c: minutes = 960 (platform ceiling) is accepted (BR-02, AC-F07-04)
+ *   - TEST-F07-04d: minutes = 961 (above platform ceiling) is rejected with code '23514' (BR-02, AC-F07-04)
+ *   - TEST-F07-05a: multiple ended goals for the same user and template are allowed (BR-05, AC-F07-05)
+ *   - TEST-F07-05b: second active goal on the same template is rejected with code '23505' (BR-05, AC-F07-05)
  *
  * Requirements:
  *   - Must specify TEST_DATABASE_URL in .env.test. Does NOT fallback to DATABASE_URL to prevent data loss.
  *   - Run with: npm test
  */
+jest.setTimeout(30000);
+
 const path = require('path');
 const dotenv = require('dotenv');
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
-
-jest.setTimeout(30000);
 
 const { Pool } = require('pg');
 const seed = require('../src/db/seeds/seed');
@@ -41,33 +41,61 @@ if (!TEST_DB_URL) {
 
 let pool;
 
-beforeAll(() => {
+async function globalCleanup(p) {
+  const c = await p.connect();
+  try {
+    await c.query(`DELETE FROM habit_entries WHERE goal_id IN (
+      SELECT id FROM goals WHERE user_id IN (
+        SELECT id FROM users WHERE username LIKE 'test_%'
+      )
+    )`);
+    await c.query(`DELETE FROM goals WHERE user_id IN (
+      SELECT id FROM users WHERE username LIKE 'test_%'
+    )`);
+    await c.query(`DELETE FROM activity_templates WHERE name LIKE '__test_%'`);
+    await c.query(`DELETE FROM users WHERE username LIKE 'test_%'`);
+  } finally {
+    c.release();
+  }
+}
+
+beforeAll(async () => {
   pool = new Pool({ connectionString: TEST_DB_URL });
+  await globalCleanup(pool);
 });
 
 afterAll(async () => {
   if (pool) {
+    await globalCleanup(pool);
     await pool.end();
   }
 });
 
 // ───── Helper: ล้างข้อมูลเฉพาะที่ขึ้นต้นด้วย prefix ทดสอบ ─────
 async function cleanupTestData(client, label) {
+  const userPattern = `test_${label}%`;
+  const tmplPattern = `__test_${label}%`;
   await client.query(`DELETE FROM habit_entries WHERE goal_id IN (
     SELECT id FROM goals WHERE user_id IN (
       SELECT id FROM users WHERE username LIKE $1
     )
-  )`, [`test_${label}%`]);
+  )`, [userPattern]);
   await client.query(`DELETE FROM goals WHERE user_id IN (
     SELECT id FROM users WHERE username LIKE $1
-  )`, [`test_${label}%`]);
-  await client.query(`DELETE FROM activity_templates WHERE name LIKE $1`,
-    [`__test_${label}%`]);
-  await client.query(`DELETE FROM users WHERE username LIKE $1`, [`test_${label}%`]);
+  )`, [userPattern]);
+  await client.query(`DELETE FROM activity_templates WHERE name LIKE $1`, [tmplPattern]);
+  await client.query(`DELETE FROM users WHERE username LIKE $1`, [userPattern]);
+  // เก็บกวาดชื่อย่อ legacy หากมีค้าง
+  if (label === 'minutes_bnd') {
+    await client.query(`DELETE FROM users WHERE username LIKE 'test_bnd_%'`);
+  }
+  if (label === 'goal_status') {
+    await client.query(`DELETE FROM users WHERE username LIKE 'test_gs_%'`);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TEST-F07-01: Data persistence across pool restart (NFR-04)
+// TEST-F07-01: Data persistence across pool restart (NFR-04, AC-F07-01)
 // ═══════════════════════════════════════════════════════════════
 describe('TEST-F07-01 — NFR-04 data persistence across restart', () => {
   const USERNAME = 'test_persist_user';
@@ -108,7 +136,7 @@ describe('TEST-F07-01 — NFR-04 data persistence across restart', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// TEST-F07-02: Unique constraint on (goal_id, entry_date) (NFR-05, BR-01)
+// TEST-F07-02: Unique constraint on (goal_id, entry_date) (NFR-05, BR-01, AC-F07-02)
 // ═══════════════════════════════════════════════════════════════
 describe('TEST-F07-02 — NFR-05 / BR-01 unique constraint (goal_id, entry_date)', () => {
   let pmId, participantId, templateId, goalId;
@@ -247,11 +275,11 @@ describe('TEST-F07-03 — Seed data idempotency (AC-F07-03)', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// TEST-F07-04: Habit entry minutes boundary constraints (BR-02, D-07)
+// TEST-F07-04: Habit entry minutes boundary constraints (BR-02, D-07, AC-F07-04)
 // ═══════════════════════════════════════════════════════════════
-describe('TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07)', () => {
+describe('TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07, AC-F07-04)', () => {
   let goalId;
-  const LABEL = 'bnd';
+  const LABEL = 'minutes_bnd';
 
   beforeEach(async () => {
     const c = await pool.connect();
@@ -259,17 +287,17 @@ describe('TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07)', () =>
 
     const pm = await c.query(
       `INSERT INTO users (username, email, password_hash, role)
-       VALUES ('test_bnd_pm', 'bpm@test.com', '$2b$10$fakehashabcdefghijklmnopq', 'pm')
+       VALUES ('test_minutes_bnd_pm', 'bpm@test.com', '$2b$10$fakehashabcdefghijklmnopq', 'pm')
        RETURNING id`
     );
     const p1 = await c.query(
       `INSERT INTO users (username, email, password_hash, role)
-       VALUES ('test_bnd_p1', 'bp1@test.com', '$2b$10$fakehashabcdefghijklmnopq', 'participant')
+       VALUES ('test_minutes_bnd_p1', 'bp1@test.com', '$2b$10$fakehashabcdefghijklmnopq', 'participant')
        RETURNING id`
     );
     const tmpl = await c.query(
       `INSERT INTO activity_templates (created_by, name, unit, min_value, max_value)
-       VALUES ($1, '__test_bnd_reading', 'minutes', 1, 960)
+       VALUES ($1, '__test_minutes_bnd_reading', 'minutes', 1, 960)
        RETURNING id`,
       [pm.rows[0].id]
     );
@@ -350,11 +378,11 @@ describe('TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07)', () =>
 });
 
 // ═══════════════════════════════════════════════════════════════
-// TEST-F07-05: Goals active vs ended status constraint (BR-05)
+// TEST-F07-05: Goals active vs ended status constraint (BR-05, AC-F07-05)
 // ═══════════════════════════════════════════════════════════════
-describe('TEST-F07-05 — goals active status constraint (BR-05)', () => {
+describe('TEST-F07-05 — goals active status constraint (BR-05, AC-F07-05)', () => {
   let userId, templateId;
-  const LABEL = 'gs';
+  const LABEL = 'goal_status';
 
   beforeEach(async () => {
     const c = await pool.connect();
@@ -362,19 +390,19 @@ describe('TEST-F07-05 — goals active status constraint (BR-05)', () => {
 
     const pm = await c.query(
       `INSERT INTO users (username, email, password_hash, role)
-       VALUES ('test_gs_pm', 'gspm@test.com', '$2b$10$fakehashabcdefghijklmnopq', 'pm')
+       VALUES ('test_goal_status_pm', 'gspm@test.com', '$2b$10$fakehashabcdefghijklmnopq', 'pm')
        RETURNING id`
     );
     const p1 = await c.query(
       `INSERT INTO users (username, email, password_hash, role)
-       VALUES ('test_gs_p1', 'gsp1@test.com', '$2b$10$fakehashabcdefghijklmnopq', 'participant')
+       VALUES ('test_goal_status_p1', 'gsp1@test.com', '$2b$10$fakehashabcdefghijklmnopq', 'participant')
        RETURNING id`
     );
     userId = p1.rows[0].id;
 
     const tmpl = await c.query(
       `INSERT INTO activity_templates (created_by, name, unit, min_value, max_value)
-       VALUES ($1, '__test_gs_reading', 'minutes', 1, 480)
+       VALUES ($1, '__test_goal_status_reading', 'minutes', 1, 480)
        RETURNING id`,
       [pm.rows[0].id]
     );
