@@ -10,6 +10,7 @@ const CLIENT_MESSAGES = {
   401: 'Unauthorized',
   403: 'Forbidden',
   404: 'Not Found',
+  409: 'Conflict',
 };
 
 function notFound(_req, res) {

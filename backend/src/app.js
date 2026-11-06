@@ -54,9 +54,9 @@ function createApp(options = {}) {
 
   // ─── Feature routers ───────────────────────────────────────────
   app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/templates', require('./routes/templates'));
+  app.use('/api/goals',     require('./routes/goals'));
   // (mounted by later branches)
-  // app.use('/api/templates', require('./routes/templates'));
-  // app.use('/api/goals',     require('./routes/goals'));
   // app.use('/api/entries',   require('./routes/entries'));
 
   if (typeof options.mountRoutes === 'function') {
