@@ -12,8 +12,8 @@
 | SRS v0.2 | ร่างแล้ว (`docs/srs.md`) |
 | Feature inventory + traceability | ร่างแล้ว |
 | แผน 3 sprint | ร่างแล้ว |
-| System-Level SDS | ยังไม่เริ่ม |
-| Sprint 1 | 🔄 กำลังดำเนินการ (feature/foundation-persistence) |
+| System-Level SDS | ร่างครบ v0.1 (ส่วนที่ยังเป็นแผนระบุไว้ในเอกสาร) |
+| Sprint 1 | 🔄 กำลังดำเนินการ: F-07, F-08, F-01, F-02 merge เข้า `sprint-1-staging` แล้ว; F-03–F-06 และ UI-01 อยู่ระหว่างทำ |
 
 ## เอกสาร
 
