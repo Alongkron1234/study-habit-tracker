@@ -150,8 +150,8 @@ Level ทั้งหมดเป็น **API integration** (supertest + Postgre
 - [x] โค้ดครบตาม §2 และ `npm test` ผ่านทุกเทสต์ พร้อมแนบ output และ commit ที่ทดสอบ — โค้ด `c7c0508`, ผลรัน `evidence/F-01-F-02-green-run.txt` (44/44)
 - [x] เทสต์ของ F-07 (11 ข้อ) ยังผ่านเหมือนเดิม (regression) — รวมอยู่ใน 44/44
 - [x] ไม่มี `password_hash` / secret ใน response หรือ log ตรวจจาก TEST-F01-01 (response มีแค่ `id, username, role`) และอ่านโค้ด
-- [ ] README เพิ่มวิธีลอง login ด้วยบัญชี seed (ไม่ใส่รหัสผ่านจริงใน Git)
-- [ ] `docs/traceability.md` อัปเดตสถานะแถว FR-01–03, BR-07, BR-08, NFR-01–03, NFR-06 ด้วยเลข AC/TEST
+- [x] README เพิ่มวิธีลอง login ด้วยบัญชี seed (ไม่ใส่รหัสผ่านจริงใน Git) — ลองทำตามด้วย curl กับเซิร์ฟเวอร์จริงแล้ว: login 200, me, logout 204, ใช้ cookie เดิมหลัง logout ได้ 401
+- [x] `docs/traceability.md` อัปเดตสถานะแถว FR-01–03, BR-07, BR-08, NFR-01–03, NFR-06 ด้วยเลข AC/TEST (BR-07/BR-08/NFR-01 ระบุว่าส่วน endpoint จริงรอ F-03 ถึง F-06)
 - [ ] PR เข้า `sprint-1-staging` ผ่าน review จาก @atiwit (ผู้เขียนไม่อนุมัติเอง)
 
 ---
