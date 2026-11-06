@@ -8,10 +8,14 @@
  *
  * Requirements: NFR-04 (persistent schema), NFR-07 (one-command setup)
  */
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
+const path = require('path');
+const dotenv = require('dotenv');
+
+// โหลด .env จาก backend/ ก่อน ถ้าไม่มีให้ค้นหาที่ repo root
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const fs   = require('fs');
-const path = require('path');
 const pool = require('./db');
 
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
@@ -64,4 +68,3 @@ async function migrate() {
 }
 
 migrate();
-

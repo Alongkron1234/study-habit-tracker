@@ -38,7 +38,7 @@
 |---|---|
 | Node.js | 20 LTS ขึ้นไป |
 | npm | 10 ขึ้นไป (มาพร้อม Node.js 20) |
-| PostgreSQL | 15 ขึ้นไป |
+| PostgreSQL | 14 ขึ้นไป |
 
 ### ขั้นตอนการติดตั้ง
 
@@ -51,19 +51,18 @@ cd study-habit-tracker/backend
 npm install
 
 # 3. ตั้งค่า environment
-cp ../.env.example ../.env
-# แก้ไขค่าใน .env ให้ตรงกับเครื่องของคุณ โดยเฉพาะ DATABASE_URL
-# ห้าม commit ไฟล์ .env เด็ดขาด (NFR-08)
+#    สร้างไฟล์ .env ในโฟลเดอร์ backend (ห้าม commit ไฟล์ .env เด็ดขาด — NFR-08)
+cp ../.env.example .env
+# แก้ไขค่าใน .env ให้ตรงกับเครื่องของคุณ โดยเฉพาะ DATABASE_URL และ SESSION_SECRET
 
-# 4. สร้างฐานข้อมูล (ทำครั้งเดียว)
-#    เปิด psql แล้วรัน:
+# 4. สร้างฐานข้อมูล (ทำครั้งเดียวใน psql)
 #    CREATE DATABASE study_habit;
 
 # 5. รัน Database Migration
-node src/db/migrate.js
+npm run migrate
 
 # 6. ใส่ข้อมูลตัวอย่าง (seed)
-node src/db/seeds/seed.js
+npm run seed
 
 # 7. รันแอป (development mode)
 npm run dev
@@ -80,8 +79,9 @@ curl http://localhost:3000/health
 cp .env.test.example .env.test
 # แก้ TEST_DATABASE_URL ใน .env.test ให้ชี้ไปยัง study_habit_test
 # สร้าง DB: CREATE DATABASE study_habit_test;
+
 # รัน migration ใน test DB:
-NODE_ENV=test DATABASE_URL=<TEST_DATABASE_URL> node src/db/migrate.js
+DATABASE_URL=<TEST_DATABASE_URL> npm run migrate
 
 # รันเทสต์ทั้งหมด
 npm test
@@ -95,8 +95,8 @@ npm test
 | Username | Role | หมายเหตุ |
 |---|---|---|
 | `pm_alice` | Program Manager | สร้างแม่แบบกิจกรรม |
-| `participant_bob` | Participant | มีเป้าหมายและ entry ตัวอย่าง |
-| `participant_carol` | Participant | มีเป้าหมายและ entry ตัวอย่าง (ทดสอบ ownership isolation) |
+| `participant_bob` | Participant | มีเป้าหมายและ entry ตัวอย่างย้อนหลัง 3 วัน |
+| `participant_carol` | Participant | มีเป้าหมายและ entry ตัวอย่างย้อนหลัง 3 วัน (ทดสอบ isolation) |
 
 ## ขั้นตอนการ release
 

@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "migrate": "node-pg-migrate -m src/db/migrations",
-    "migrate:down": "node-pg-migrate -m src/db/migrations down",
+    "migrate": "node src/db/migrate.js",
     "seed": "node src/db/seeds/seed.js",
     "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit --runInBand",
     "test:watch": "jest --watch --runInBand"
@@ -26,8 +25,6 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "nodemon": "^3.1.4",
-    "node-pg-migrate": "^7.4.0",
     "supertest": "^7.0.0"
   }
 }
-

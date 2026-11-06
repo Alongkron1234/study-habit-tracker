@@ -5,14 +5,25 @@
  * endpoint. Feature routers (auth, templates, goals, entries) will be
  * mounted in later branches.
  *
- * Requirements: NFR-07 (runs with one command), NFR-08 (no secrets)
+ * Requirements: NFR-06 (safe error responses), NFR-07 (runs with one command), NFR-08 (no secrets)
  */
-require('dotenv').config();
+const path = require('path');
+const dotenv = require('dotenv');
 
-const express      = require('express');
-const session      = require('express-session');
-const pgSession    = require('connect-pg-simple')(session);
-const pool         = require('./db/db');
+// โหลด .env จาก backend/ ก่อน ถ้าไม่มีให้ค้นหาที่ repo root
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
+// Fail-fast หากไม่ได้ตั้งค่า SESSION_SECRET (จำเป็นต่อความปลอดภัยของ Session)
+if (!process.env.SESSION_SECRET) {
+  console.error('[fatal] SESSION_SECRET environment variable is required.');
+  process.exit(1);
+}
+
+const express   = require('express');
+const session   = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
+const pool      = require('./db/db');
 
 const app  = express();
 const PORT = process.env.APP_PORT || 3000;
@@ -51,15 +62,29 @@ app.get('/health', async (_req, res) => {
 // ─── Global error handler (NFR-06 — safe error format) ────────
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
-  console.error('[error]', err.message);
-  res.status(err.status || 500).json({
-    error: err.message || 'Internal Server Error',
+  const status = err.status && Number.isInteger(err.status) ? err.status : 500;
+
+  // Log ข้อผิดพลาดจริงฝั่งเซิร์ฟเวอร์เท่านั้น
+  console.error('[server error]', err);
+
+  // NFR-06: หากเป็น 500 หรือ server error ให้ตอบข้อความกลางๆ เสมอ เพื่อไม่เปิดเผยข้อมูลภายใน
+  if (status >= 500) {
+    return res.status(500).json({
+      error: 'Internal Server Error',
+    });
+  }
+
+  // Client errors (4xx) ตอบข้อความ error ปลอดภัย
+  return res.status(status).json({
+    error: err.message || 'Bad Request',
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`[app] running on port ${PORT}`);
-});
+// ไม่เริ่ม listen ทันทีหากถูก require จากโมดูลอื่น (เช่น supertest ใน unit/integration tests)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`[app] running on port ${PORT}`);
+  });
+}
 
 module.exports = app; // exported for supertest
-

@@ -11,9 +11,14 @@
  *
  * Usage: node src/db/seeds/seed.js
  *
- * Requirements: NFR-07 (ready-to-demo), NFR-08 (no secrets in git)
+ * Requirements: NFR-07 (ready-to-demo), NFR-08 (no secrets in git), BR-03 (entries within goal range)
  */
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../../.env') });
+const path = require('path');
+const dotenv = require('dotenv');
+
+// โหลด .env จาก backend/ ก่อน ถ้าไม่มีให้ค้นหาที่ repo root
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 const bcrypt = require('bcrypt');
 const pool   = require('../db');
@@ -22,9 +27,9 @@ const SALT_ROUNDS = 10;
 
 // รหัสผ่าน synthetic สำหรับ demo เท่านั้น (ดู README สำหรับ plaintext)
 const SEED_USERS = [
-  { username: 'pm_alice',         email: 'alice@example.com',  role: 'pm',          plain: 'Demo@Alice1' },
-  { username: 'participant_bob',  email: 'bob@example.com',    role: 'participant', plain: 'Demo@Bob123' },
-  { username: 'participant_carol',email: 'carol@example.com',  role: 'participant', plain: 'Demo@Carol1' },
+  { username: 'pm_alice',          email: 'alice@example.com',  role: 'pm',          plain: 'Demo@Alice1' },
+  { username: 'participant_bob',   email: 'bob@example.com',    role: 'participant', plain: 'Demo@Bob123' },
+  { username: 'participant_carol', email: 'carol@example.com',  role: 'participant', plain: 'Demo@Carol1' },
 ];
 
 async function seed() {
@@ -32,7 +37,7 @@ async function seed() {
   try {
     await client.query('BEGIN');
 
-    // ───── users ─────
+    // ───── 1. users (idempotent upsert) ─────
     const userIds = {};
     for (const u of SEED_USERS) {
       const hash = await bcrypt.hash(u.plain, SALT_ROUNDS);
@@ -51,54 +56,69 @@ async function seed() {
       console.log(`[seed] user upserted: ${u.username} (${u.role})`);
     }
 
-    // ───── activity_templates (PM สร้าง) ─────
-    const templateRows = await client.query(
-      `INSERT INTO activity_templates (created_by, name, unit, min_value, max_value)
-       VALUES ($1, 'Reading Practice', 'minutes', 1, 480)
-       ON CONFLICT DO NOTHING
-       RETURNING id`,
-      [userIds['pm_alice']]
+    // ───── 2. activity_templates (idempotent check & insert) ─────
+    let templateId;
+    const existingTmpl = await client.query(
+      `SELECT id FROM activity_templates WHERE created_by = $1 AND name = $2 LIMIT 1`,
+      [userIds['pm_alice'], 'Reading Practice']
     );
 
-    let templateId;
-    if (templateRows.rows.length > 0) {
-      templateId = templateRows.rows[0].id;
-      console.log(`[seed] template created: id=${templateId}`);
+    if (existingTmpl.rows.length > 0) {
+      templateId = existingTmpl.rows[0].id;
+      console.log(`[seed] template already exists: id=${templateId}`);
     } else {
-      const { rows } = await client.query(
-        `SELECT id FROM activity_templates WHERE name = 'Reading Practice' AND created_by = $1 LIMIT 1`,
+      const newTmpl = await client.query(
+        `INSERT INTO activity_templates (created_by, name, unit, min_value, max_value)
+         VALUES ($1, 'Reading Practice', 'minutes', 1, 480)
+         RETURNING id`,
         [userIds['pm_alice']]
       );
-      templateId = rows[0].id;
-      console.log(`[seed] template already exists: id=${templateId}`);
+      templateId = newTmpl.rows[0].id;
+      console.log(`[seed] template created: id=${templateId}`);
     }
 
-    // ───── goals (Participant ตั้งเป้า) ─────
+    // ───── 3. goals & habit_entries (idempotent & BR-03 compliant) ─────
     for (const username of ['participant_bob', 'participant_carol']) {
       const userId = userIds[username];
-      const { rows } = await client.query(
-        `INSERT INTO goals (user_id, template_id, target_minutes, start_date, end_date)
-         VALUES ($1, $2, 600, CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days')
-         ON CONFLICT DO NOTHING
-         RETURNING id`,
+      let goalId;
+
+      // ค้นหาเป้าหมาย active ที่มีอยู่เดิม
+      const existingGoal = await client.query(
+        `SELECT id FROM goals WHERE user_id = $1 AND template_id = $2 AND status = 'active' LIMIT 1`,
         [userId, templateId]
       );
-      if (rows.length > 0) {
-        const goalId = rows[0].id;
-        console.log(`[seed] goal created for ${username}: id=${goalId}`);
 
-        // habit_entries sample (3 วันย้อนหลัง)
-        const sampleMinutes = [30, 45, 60];
-        for (let i = 0; i < sampleMinutes.length; i++) {
-          await client.query(
-            `INSERT INTO habit_entries (goal_id, user_id, entry_date, minutes)
-             VALUES ($1, $2, CURRENT_DATE - $3, $4)
-             ON CONFLICT (goal_id, entry_date) DO NOTHING`,
-            [goalId, userId, i + 1, sampleMinutes[i]]
-          );
-        }
-        console.log(`[seed] sample entries inserted for ${username}`);
+      if (existingGoal.rows.length > 0) {
+        goalId = existingGoal.rows[0].id;
+        console.log(`[seed] goal already exists for ${username}: id=${goalId}`);
+      } else {
+        // BR-03: ให้ goal เริ่มต้นย้อนหลัง 7 วัน เพื่อให้ sample entries อยู่ในช่วง [start_date, end_date]
+        const newGoal = await client.query(
+          `INSERT INTO goals (user_id, template_id, target_minutes, start_date, end_date, status)
+           VALUES ($1, $2, 600, CURRENT_DATE - INTERVAL '7 days', CURRENT_DATE + INTERVAL '23 days', 'active')
+           RETURNING id`,
+          [userId, templateId]
+        );
+        goalId = newGoal.rows[0].id;
+        console.log(`[seed] goal created for ${username}: id=${goalId}`);
       }
+
+      // habit_entries sample (3 วันย้อนหลัง: 1, 2, 3 วันก่อนหน้า)
+      // วันที่เหล่านี้อยู่หลัง start_date (7 วันก่อน) ถูกต้องตาม BR-03
+      // และไม่เก็บ user_id ซ้ำตาม schema ใหม่
+      const sampleMinutes = [30, 45, 60];
+      for (let i = 0; i < sampleMinutes.length; i++) {
+        const daysAgo = i + 1;
+        await client.query(
+          `INSERT INTO habit_entries (goal_id, entry_date, minutes)
+           VALUES ($1, CURRENT_DATE - $2::int, $3)
+           ON CONFLICT (goal_id, entry_date) DO UPDATE
+             SET minutes = EXCLUDED.minutes,
+                 updated_at = now()`,
+          [goalId, daysAgo, sampleMinutes[i]]
+        );
+      }
+      console.log(`[seed] sample entries upserted for ${username}`);
     }
 
     await client.query('COMMIT');
@@ -114,4 +134,3 @@ async function seed() {
 }
 
 seed();
-
