@@ -13,7 +13,7 @@
 | Feature inventory + traceability | ร่างแล้ว |
 | แผน 3 sprint | ร่างแล้ว |
 | System-Level SDS | ยังไม่เริ่ม |
-| Sprint 1 | ยังไม่เริ่ม |
+| Sprint 1 | 🔄 กำลังดำเนินการ (feature/foundation-persistence) |
 
 ## เอกสาร
 
@@ -30,21 +30,79 @@
 | การมีส่วนร่วมของทีม | `docs/contributions.md` |
 | การใช้ AI | `docs/ai-use-declaration.md` |
 
-## การติดตั้งและรัน (ต้องกรอกเมื่อเลือก stack แล้ว)
+## การติดตั้งและรัน (NFR-07: ทำตามได้ภายใน 15 นาทีบนเครื่องสะอาด)
 
-> ส่วนนี้ต้องทำตามได้จริงบนเครื่องที่สะอาดภายใน 15 นาที (NFR-07)
+### ความต้องการของระบบ
 
-1. ความต้องการของระบบ: <เช่น Node.js เวอร์ชัน ..., PostgreSQL เวอร์ชัน ...>
-2. ติดตั้ง dependency: `<คำสั่ง>`
-3. ตั้งค่า environment: คัดลอก `.env.example` เป็น `.env` แล้วกรอกค่า (ห้าม commit `.env`)
-4. สร้างฐานข้อมูลและ migration: `<คำสั่ง>`
-5. ใส่ข้อมูลตั้งต้น (seed): `<คำสั่ง>`
-6. รันแอป: `<คำสั่ง>`
-7. รันเทสต์: `<คำสั่ง>`
+| รายการ | เวอร์ชันขั้นต่ำ |
+|---|---|
+| Node.js | 20 LTS ขึ้นไป |
+| npm | 10 ขึ้นไป (มาพร้อม Node.js 20) |
+| PostgreSQL | 14 ขึ้นไป |
+
+> **⚠️ หมายเหตุสำคัญสำหรับการทดสอบ/อัปเดต:**  
+> มีการปรับปรุงโครงสร้างใน `001_initial_schema.sql` ให้ตรงตาม SRS ล่าสุดก่อนขึ้น release หากคุณเคยรัน migration ด้วยเวอร์ชันก่อนหน้า จะต้อง **Drop และสร้างฐานข้อมูลใหม่** ก่อนรัน migration เพื่อป้องกัน schema mismatch (เช่น คอลัมน์ `user_id` ใน `habit_entries` ที่ถูกนำออก):
+> ```bash
+> psql -U postgres -c "DROP DATABASE study_habit; CREATE DATABASE study_habit;"
+> ```
+
+### ขั้นตอนการติดตั้ง
+
+```bash
+# 1. Clone repository
+git clone https://github.com/Alongkron1234/study-habit-tracker.git
+cd study-habit-tracker/backend
+
+# 2. ติดตั้ง dependency
+npm install
+
+# 3. ตั้งค่า environment
+#    สร้างไฟล์ .env ในโฟลเดอร์ backend (ห้าม commit ไฟล์ .env เด็ดขาด — NFR-08)
+cp ../.env.example .env
+# แก้ไขค่าใน .env ให้ตรงกับเครื่องของคุณ โดยเฉพาะ DATABASE_URL และ SESSION_SECRET
+
+# 4. สร้างฐานข้อมูล (ทำครั้งเดียวใน psql)
+#    CREATE DATABASE study_habit;
+
+# 5. รัน Database Migration
+npm run migrate
+
+# 6. ใส่ข้อมูลตัวอย่าง (seed)
+npm run seed
+
+# 7. รันแอป (development mode)
+npm run dev
+
+# 8. ทดสอบว่าแอปทำงาน
+curl http://localhost:3000/health
+# ควรได้: {"status":"ok","db":"connected"}
+```
+
+### รันเทสต์
+
+```bash
+# 1. ตั้งค่า test database (ทำครั้งเดียว)
+cp .env.test.example .env.test
+# แก้ TEST_DATABASE_URL ใน .env.test ให้ชี้ไปยัง study_habit_test
+# สร้าง DB: CREATE DATABASE study_habit_test;
+
+# 2. รัน migration ใน test DB:
+DATABASE_URL=<TEST_DATABASE_URL> npm run migrate
+
+# 3. รันเทสต์ทั้งหมด
+npm test
+```
 
 ### บัญชีทดสอบ (ข้อมูลสังเคราะห์)
 
-ระบุ username ของบัญชี seed ที่นี่ รหัสผ่านให้ส่งผ่านช่องทางส่วนตัวของวิชาหรือกำหนดจาก seed script ห้ามใส่รหัสผ่านจริงใน Git
+บัญชีด้านล่างสร้างโดย seed script **เพื่อใช้ demo/test เท่านั้น** ห้ามใช้ในระบบจริง
+รหัสผ่าน plaintext ส่งผ่านช่องทางส่วนตัวของวิชา (ห้ามใส่ใน Git — NFR-08)
+
+| Username | Role | หมายเหตุ |
+|---|---|---|
+| `pm_alice` | Program Manager | สร้างแม่แบบกิจกรรม |
+| `participant_bob` | Participant | มีเป้าหมายและ entry ตัวอย่างย้อนหลัง 3 วัน |
+| `participant_carol` | Participant | มีเป้าหมายและ entry ตัวอย่างย้อนหลัง 3 วัน (ทดสอบ isolation) |
 
 ## ขั้นตอนการ release
 

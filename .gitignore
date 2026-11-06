@@ -1,7 +1,14 @@
 # secrets และ config ในเครื่อง
 .env
 .env.*
+.env.test
+backend/.env
+backend/.env.*
+backend/.env.test
+*.env
 !.env.example
+!.env.test.example
+!backend/.env.test.example
 
 # dependency และ build
 node_modules/
