@@ -188,3 +188,4 @@ describe('NFR-05 — unique constraint (goal_id, entry_date)', () => {
     expect(parseInt(rows[0].cnt, 10)).toBe(2);
   });
 });
+

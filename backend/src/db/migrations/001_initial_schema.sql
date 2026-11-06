@@ -74,3 +74,4 @@ CREATE TABLE IF NOT EXISTS habit_entries (
   -- NFR-05 / BR-01: บันทึกได้ 1 ครั้งต่อวันต่อเป้าหมาย (ป้องกัน concurrent)
   CONSTRAINT uq_habit_entries_goal_date UNIQUE (goal_id, entry_date)
 );
+
