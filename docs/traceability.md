@@ -9,9 +9,9 @@
 
 | Requirement | Feature | Sprint (สร้าง) | วิธีตรวจสอบ (วางแผน) | Sprint (ตรวจ) | สถานะ |
 |---|---|---|---|---|---|
-| FR-01 login | F-01 | 1 | API integration: login ถูก/ผิด | 1 | วางแผน |
-| FR-02 logout | F-01 | 1 | API integration: ใช้ session หลัง logout ไม่ได้ | 1 | วางแผน |
-| FR-03 ผู้ใช้ปัจจุบัน | F-01 | 1 | API integration | 1 | วางแผน |
+| FR-01 login | F-01 | 1 | API integration: login ถูก/ผิด | 1 | implement แล้ว — AC-F01-01, 02 · TEST-F01-01, 02a–c ผ่าน (@c7c0508) |
+| FR-02 logout | F-01 | 1 | API integration: ใช้ session หลัง logout ไม่ได้ | 1 | implement แล้ว — AC-F01-04 · TEST-F01-04a, b ผ่าน (@c7c0508) |
+| FR-03 ผู้ใช้ปัจจุบัน | F-01 | 1 | API integration | 1 | implement แล้ว — AC-F01-03 · TEST-F01-03 ผ่าน (@c7c0508) |
 | FR-04 PM สร้างแม่แบบ | F-03 | 1 | API integration + persistence | 1 | วางแผน |
 | FR-05 PM ดูรายการแม่แบบ | F-03 | 1 | API integration | 1 | วางแผน |
 | FR-06 Participant ดูแม่แบบ | F-03 | 1 | API integration | 1 | วางแผน |
@@ -36,20 +36,20 @@
 | BR-04 เงื่อนไขเป้าหมาย | F-04 | 1 | Unit boundary | 1 | วางแผน |
 | BR-05 สถานะเป้าหมาย / 1 active ต่อแม่แบบ | F-04, F-05 | 1 | Unit + API (entry หลังสิ้นสุด, เป้าหมายซ้อน) | 1 | วางแผน |
 | BR-06 คำนวณความคืบหน้า | F-06 | 1 | Unit (รวม case เกินเป้า) | 1 | วางแผน |
-| BR-07 เฉพาะ PM จัดการแม่แบบ | F-02, F-03 | 1 | API role test | 1 | วางแผน |
-| BR-08 ข้อมูลเป็นของเจ้าของ / PM อ่านไม่ได้ | F-02, F-04, F-05, F-06 | 1 | API ownership + role test | 1 | วางแผน |
+| BR-07 เฉพาะ PM จัดการแม่แบบ | F-02, F-03 | 1 | API role test | 1 | ส่วน middleware ผ่าน — AC-F02-02 · TEST-F02-02a–c (@c7c0508) รอตรวจกับ endpoint จริงใน F-03 |
+| BR-08 ข้อมูลเป็นของเจ้าของ / PM อ่านไม่ได้ | F-02, F-04, F-05, F-06 | 1 | API ownership + role test | 1 | ส่วน middleware ผ่าน — AC-F02-03 · TEST-F02-03a–c (@c7c0508) รอตรวจกับ endpoint จริงใน F-04 ถึง F-06 |
 | BR-09 หน่วยคงที่ | F-03, F-05 | 1 | Unit | 1 | วางแผน |
 
 ## 3. Non-Functional Requirements
 
 | Requirement | Feature / ความรับผิดชอบ | Sprint (สร้าง) | วิธีตรวจสอบ (วางแผน) | Sprint (ตรวจ) | สถานะ |
 |---|---|---|---|---|---|
-| NFR-01 ไม่มี session → 401 | F-01, F-02 | 1 | API test ครอบคลุมทุก endpoint ที่ป้องกัน | 1 (ทดสอบซ้ำทุก sprint) | วางแผน |
-| NFR-02 hash รหัสผ่าน | F-01 | 1 | Integration บน DB + ตรวจโค้ด | 1 | วางแผน |
-| NFR-03 session หมดอายุ 8 ชม. | F-01 | 1 | API test ด้วย token หมดอายุ/ถูกเพิกถอน | 1 | วางแผน |
+| NFR-01 ไม่มี session → 401 | F-01, F-02 | 1 | API test ครอบคลุมทุก endpoint ที่ป้องกัน | 1 (ทดสอบซ้ำทุก sprint) | ผ่านกับ endpoint ปัจจุบัน — AC-F02-01 · TEST-F02-01a, b (@c7c0508) ต้องเพิ่ม endpoint ใหม่ในรายการทดสอบทุก feature |
+| NFR-02 hash รหัสผ่าน | F-01 | 1 | Integration บน DB + ตรวจโค้ด | 1 | ผ่าน — AC-F01-06 · TEST-F01-06 (@c7c0508) |
+| NFR-03 session หมดอายุ 8 ชม. | F-01 | 1 | API test ด้วย token หมดอายุ/ถูกเพิกถอน | 1 | ผ่าน — AC-F01-04, 05, 07 · TEST-F01-04, 05a, 05b, 07 (@c7c0508) |
 | NFR-04 ข้อมูลอยู่รอดหลังรีสตาร์ต | F-07 | 1 | Integration: เขียน → รีสตาร์ต → อ่าน | 1 | วางแผน |
 | NFR-05 ส่งพร้อมกันเหลือ 1 entry | F-05 (พึ่ง F-07) | 1 | Integration คำขอขนาน | 1 | วางแผน |
-| NFR-06 error ไม่เปิดเผยข้อมูลภายใน | F-02 | 1 | API test ตรวจรูปแบบ error | 1 | วางแผน |
+| NFR-06 error ไม่เปิดเผยข้อมูลภายใน | F-02 | 1 | API test ตรวจรูปแบบ error | 1 | ผ่าน — AC-F02-04 · TEST-F02-04a–c (@c7c0508) |
 | NFR-07 ติดตั้งใน 15 นาที | F-08 | 1 | เพื่อนทำตาม README บนเครื่องสะอาด | 1 | วางแผน |
 | NFR-08 ไม่ commit secret | F-08 | 1 | สแกน repo + review | 1 | วางแผน |
 | NFR-09 p95 < 500 ms | F-12 | 2 | สคริปต์จับเวลา | 2 | วางแผน |

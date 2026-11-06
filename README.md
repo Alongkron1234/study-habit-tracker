@@ -78,6 +78,23 @@ curl http://localhost:3000/health
 # ควรได้: {"status":"ok","db":"connected"}
 ```
 
+### ลอง login (F-01)
+
+หลัง `npm run seed` แล้ว ลอง login ด้วยบัญชีใน "บัญชีทดสอบ" ด้านล่าง (รหัสผ่านรับจากช่องทางส่วนตัวของวิชา ไม่ใส่ใน Git):
+
+```bash
+# login แล้วเก็บ cookie ไว้ในไฟล์ cookies.txt
+curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"participant_bob","password":"<รหัสผ่านของบัญชีนี้>"}'
+
+# ดูผู้ใช้ปัจจุบัน
+curl -b cookies.txt http://localhost:3000/api/auth/me
+
+# logout (ได้ 204 แล้วเรียก /me อีกครั้งจะได้ 401)
+curl -i -b cookies.txt -X POST http://localhost:3000/api/auth/logout
+```
+
 ### รันเทสต์
 
 ```bash
