@@ -161,3 +161,4 @@ Level ทั้งหมดเป็น **API integration** (supertest + Postgre
 | วันที่ | การเปลี่ยนแปลง | เหตุผล |
 |---|---|---|
 | 2026-11-06 | สร้าง v1.0 (ร่าง) | ก่อนเริ่ม implement |
+| 2026-11-07 | v1.1 | ตาม review ของ @atiwit ใน PR #7: error handler log เฉพาะ 5xx (4xx ไม่ log) ไม่เปลี่ยน AC; เพิ่ม assertion เรื่อง log ใน TEST-F02-04a/b/c (04b fail ก่อนแก้ ผ่านหลังแก้) |

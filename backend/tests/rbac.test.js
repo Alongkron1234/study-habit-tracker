@@ -40,6 +40,8 @@ beforeAll(async () => {
   await pool.query('DELETE FROM session');
   app = createApp({
     mountRoutes(a) {
+      // TEST-ONLY route: ตั้ง session ตรงๆ โดยไม่ตรวจรหัสผ่าน เพื่อให้เทสต์ F-02 ไม่ขึ้นกับ F-01
+      // ไม่มีอยู่ในแอปจริง (app.js ไม่ mount) ห้ามนำไปใช้นอกไฟล์เทสต์
       a.post('/__test/login', (req, res) => {
         req.session.user = req.body;
         res.sendStatus(204);
@@ -140,27 +142,37 @@ describe('TEST-F02-04 — error ที่ปลอดภัย (AC-F02-04, NFR-0
   test('TEST-F02-04a: error ที่ไม่คาดคิด → 500 ข้อความกลาง ไม่มี SQL/stack/message ภายใน', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const res = await request(app).get('/__test/boom');
+    const logged = spy.mock.calls.length;
     spy.mockRestore();
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: 'Internal Server Error' });
     expect(res.text).not.toMatch(/select|secret|stack|node_modules|\.js/i);
+    expect(logged).toBeGreaterThan(0); // 5xx ต้อง log รายละเอียดจริงไว้ฝั่งเซิร์ฟเวอร์
   });
 
   test('TEST-F02-04b: JSON พัง → 400 ข้อความคงที่ ไม่มีข้อความ parse ของ library', async () => {
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const res = await request(app)
       .post('/api/auth/login')
       .set('Content-Type', 'application/json')
       .send('{"username": ');
+    const logged = spy.mock.calls.length;
+    spy.mockRestore();
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({ error: 'Bad Request' });
+    expect(logged).toBe(0); // 4xx เป็นความผิดของ client ไม่ log เป็น server error (review PR #7)
   });
 
   test('TEST-F02-04c: route ที่ไม่มีอยู่ → 404 JSON ข้อความคงที่', async () => {
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const res = await request(app).get('/__test/does-not-exist');
+    const logged = spy.mock.calls.length;
+    spy.mockRestore();
 
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ error: 'Not Found' });
+    expect(logged).toBe(0);
   });
 });

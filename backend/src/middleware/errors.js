@@ -20,9 +20,9 @@ function notFound(_req, res) {
 function errorHandler(err, _req, res, _next) {
   const isClientError = Number.isInteger(err.status) && err.status >= 400 && err.status < 500;
 
-  console.error('[server error]', err);
-
   if (!isClientError) {
+    // log เฉพาะ 5xx (ความผิดพลาดฝั่งเซิร์ฟเวอร์) 4xx เป็นความผิดของ client ไม่ log เพื่อลด noise
+    console.error('[server error]', err);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
   return res.status(err.status).json({ error: CLIENT_MESSAGES[err.status] || 'Bad Request' });

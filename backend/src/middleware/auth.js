@@ -18,6 +18,8 @@ function requireAuth(req, res, next) {
 function requireRole(...roles) {
   return (req, res, next) => {
     const user = req.session && req.session.user;
+    // defensive guard: ปกติ requireAuth ตัดคำขอที่ไม่มี session ไปแล้วก่อนถึงตรงนี้
+    // กันไว้เผื่อมีคนต่อ requireRole โดยลืมใส่ requireAuth จะได้ 401 ไม่ใช่ crash (TypeError → 500)
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
     if (!roles.includes(user.role)) return res.status(403).json({ error: 'Forbidden' });
     return next();
