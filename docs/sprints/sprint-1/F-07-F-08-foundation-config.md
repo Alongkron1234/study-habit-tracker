@@ -2,7 +2,7 @@
 
 **Sprint:** 1 | **Issue:** #1 | **Branch:** `feature/foundation-persistence`
 **อ้างอิง SRS:** NFR-04, NFR-05, NFR-06, NFR-07, NFR-08, BR-01, BR-02, BR-04, BR-05, BR-08, D-07
-**เวอร์ชัน:** 1.1 | **วันที่:** 2026-11-06
+**เวอร์ชัน:** 1.2 | **วันที่:** 2026-11-06
 
 ---
 
@@ -31,7 +31,7 @@ F-08 ทำหน้าที่ให้ผู้พัฒนาหรือ re
 | `activity_templates` | id, created_by→users, name, unit, min_value, max_value, is_archived | min_value ≥ 1, max_value ≤ 960, max_value ≥ min_value | BR-02 (เพดาน 960 นาที, ต่ำสุด 1), BR-09 (หน่วยนาที) |
 | `goals` | id, user_id→users, template_id→templates, target_minutes, start_date, end_date, status | target_minutes > 0, end_date ≥ start_date, status IN ('active','ended') | BR-04 (เงื่อนไขเป้าหมาย), BR-05 |
 | *partial index* | `uq_goals_active` on (user_id, template_id) WHERE status='active' | UNIQUE | BR-05 (1 active goal ต่อแม่แบบ, อนุญาตหลาย ended goals) |
-| `habit_entries` | id, goal_id→goals (ON DELETE CASCADE), entry_date, minutes | minutes BETWEEN 1 AND 960, **UNIQUE(goal_id, entry_date)** | BR-01 / NFR-05 (1 entry ต่อวัน), BR-02 / D-07 (ไม่รับ 0 นาที), BR-08 (ไม่เก็บ user_id ซ้ำเพื่อคง 3NF และป้องกัน ownership mismatch) |
+| `habit_entries` | id, goal_id→goals, entry_date, minutes | minutes BETWEEN 1 AND 960, **UNIQUE(goal_id, entry_date)** | BR-01 / NFR-05 (1 entry ต่อวัน), BR-02 / D-07 (ไม่รับ 0 นาที), BR-08 (ไม่เก็บ user_id ซ้ำเพื่อคง 3NF และป้องกัน ownership mismatch, ไม่อนุญาตลบ goal ถ้ามี entries โดยไม่มี cascade เพื่อรักษาประวัติ) |
 | `session` | sid, sess, expire | PRIMARY KEY(sid) | NFR-01, NFR-03 (connect-pg-simple) |
 | `schema_migrations` | filename, applied_at | PRIMARY KEY(filename) | Idempotent migration tracking |
 
@@ -46,7 +46,7 @@ F-08 ทำหน้าที่ให้ผู้พัฒนาหรือ re
 - **BR-03:** ช่วงวันที่ entry ต้องอยู่ในช่วงเป้าหมาย → Seed data เริ่ม goal ย้อนหลัง 7 วันเพื่อรองรับตัวอย่าง
 - **BR-04:** เงื่อนไขเป้าหมาย → `CHECK(end_date >= start_date)` และ `CHECK(target_minutes > 0)`
 - **BR-05:** 1 active goal ต่อ user ต่อ template → บังคับด้วย Partial Unique Index `uq_goals_active`
-- **BR-08:** ความเป็นเจ้าของข้อมูล → ไม่เก็บ `user_id` ซ้ำใน `habit_entries` อ้างอิงผ่าน `goals.user_id` เสมอ
+- **BR-08:** ความเป็นเจ้าของข้อมูล → ไม่เก็บ `user_id` ซ้ำใน `habit_entries` อ้างอิงผ่าน `goals.user_id` เสมอ และไม่ใส่ `ON DELETE CASCADE` เพื่อป้องกันประวัติสูญหาย
 - **NFR-06:** Error handler ปลอดภัย → 500 error ตอบ JSON กลางๆ เสมอ ไม่เปิดเผย stack trace หรือ db message
 
 ---
@@ -63,9 +63,9 @@ F-08 ทำหน้าที่ให้ผู้พัฒนาหรือ re
 
 | ID | เงื่อนไข | วิธีตรวจ | ระดับ |
 |---|---|---|---|
-| **AC-F07-01** | ข้อมูลที่เขียนลง DB ยังอยู่ครบหลัง pool reconnect (จำลอง restart) | Integration test: เขียน → release client → อ่านด้วย client ใหม่ | Integration |
-| **AC-F07-02** | DB constraint ปฏิเสธการ insert ซ้ำ `(goal_id, entry_date)` | Integration test: insert ครั้งที่ 2 ต้องโยน unique violation | Integration |
-| **AC-F07-03** | รัน seed แล้วได้ผู้ใช้ 3 คน + template + goal + entries อย่าง idempotent | Script: รันซ้ำ 2 ครั้ง ข้อมูลไม่ซ้ำซ้อน | Integration/Manual |
+| **AC-F07-01** | ข้อมูลที่เขียนลง DB ยังอยู่ครบหลัง pool reconnect (จำลอง restart) | Integration test: เขียน → ปิด pool เก่า → เปิด pool ใหม่ → ตรวจข้อมูล | Integration |
+| **AC-F07-02** | DB constraint ปฏิเสธการ insert ซ้ำ `(goal_id, entry_date)` ด้วย error code '23505' | Integration test: insert ครั้งที่ 2 ต้องโยน unique violation (23505) | Integration |
+| **AC-F07-03** | รัน seed แล้วได้ผู้ใช้ 3 คน + template + goal + entries อย่าง idempotent | Automated test: รัน seed 2 ครั้งแล้วตรวจ row count เท่าเดิม | Integration |
 | **AC-F08-01** | Clone → ติดตั้ง → migrate → seed → start สำเร็จภายใน 15 นาที (NFR-07) | Peer review: ให้เพื่อนทำตาม README บนเครื่องสะอาด | Manual/Review |
 | **AC-F08-02** | ไม่มี secret หรือ password จริงใน Git (NFR-08) | `git log -p` scan + `.gitignore` review | Code Review |
 
@@ -75,15 +75,17 @@ F-08 ทำหน้าที่ให้ผู้พัฒนาหรือ re
 
 | ID Test | AC ที่ครอบคลุม | Level | Precondition | Action | Expected |
 |---|---|---|---|---|---|
-| **TEST-F07-01** | AC-F07-01 | Integration | DB ที่ apply migration แล้ว | Insert user ด้วย client A → release → query ด้วย client B | rows.length === 1 และค่าตรง |
+| **TEST-F07-01** | AC-F07-01 | Integration | DB ที่ apply migration แล้ว | Insert user ใน pool A → `poolA.end()` → query ใน pool B | rows.length === 1 และค่าตรง (พิสูจน์ restart) |
 | **TEST-F07-02a** | AC-F07-02 | Integration | มี goal อยู่ | Insert habit_entry ครั้งแรก | สำเร็จ มี id |
-| **TEST-F07-02b** | AC-F07-02 | Integration | มี goal + entry วันเดิมแล้ว | Insert habit_entry วันเดิมซ้ำ | reject — unique violation |
+| **TEST-F07-02b** | AC-F07-02 | Integration | มี goal + entry วันเดิมแล้ว | Insert habit_entry วันเดิมซ้ำ | reject — `err.code === '23505'` |
 | **TEST-F07-02c** | AC-F07-02 | Integration | มี goal | Insert habit_entry 2 วันต่างกัน | ทั้งคู่สำเร็จ, count === 2 |
-| **TEST-F07-03a** | BR-02 / D-07 | Integration | มี goal | Insert entry minutes = 0 | reject — check constraint |
-| **TEST-F07-03b** | BR-02 | Integration | มี goal | Insert entry minutes = 1 (min) และ 960 (max) | สำเร็จทั้งคู่ |
-| **TEST-F07-03c** | BR-02 | Integration | มี goal | Insert entry minutes = 961 | reject — check constraint |
-| **TEST-F07-04a** | BR-05 | Integration | มี template | Insert 2 ended goals สำหรับ user คนเดิม | สำเร็จทั้งคู่ |
-| **TEST-F07-04b** | BR-05 | Integration | มี 1 active goal | Insert active goal ซ้ำสำหรับ template เดิม | reject — partial index violation |
+| **TEST-F07-03** | AC-F07-03 | Integration | DB เปล่า | รัน `seed(pool)` 2 รอบติดต่อกัน | row count ของทุกตารางเท่าเดิม ไม่เพิ่ม |
+| **TEST-F07-04a** | BR-02 / D-07 | Integration | มี goal | Insert entry minutes = 0 | reject — `err.code === '23514'` |
+| **TEST-F07-04b** | BR-02 | Integration | มี goal | Insert entry minutes = 1 (min) | สำเร็จ |
+| **TEST-F07-04c** | BR-02 | Integration | มี goal | Insert entry minutes = 960 (max) | สำเร็จ |
+| **TEST-F07-04d** | BR-02 | Integration | มี goal | Insert entry minutes = 961 | reject — `err.code === '23514'` |
+| **TEST-F07-05a** | BR-05 | Integration | มี template | Insert 2 ended goals สำหรับ user คนเดิม | สำเร็จทั้งคู่ |
+| **TEST-F07-05b** | BR-05 | Integration | มี 1 active goal | Insert active goal ซ้ำสำหรับ template เดิม | reject — `err.code === '23505'` |
 
 ไฟล์เทสต์: [`../../tests/persistence.test.js`](../../tests/persistence.test.js)
 
@@ -95,9 +97,12 @@ F-08 ทำหน้าที่ให้ผู้พัฒนาหรือ re
 - [x] `migrate.js` รันได้และ idempotent
 - [x] `seed.js` รันได้และ idempotent (check existing rows + ON CONFLICT UPDATE)
 - [x] Schema ตรงกับ SRS ครบถ้วน (BR-02, BR-05, D-07, 3NF สำหรับ habit_entries)
+- [x] ถอด `ON DELETE CASCADE` ออกจาก `habit_entries.goal_id` เพื่อรักษาประวัติการบันทึก
 - [x] ไม่มี `.env` หรือ secret ใน commit (ตรวจจาก `.gitignore`)
 - [x] Error handler ไม่เปิดเผยรายละเอียดข้อผิดพลาดภายใน (NFR-06)
-- [x] `README.md` มีขั้นตอน Setup ครบตรงกับการทำงานจริงของโค้ด (NFR-07)
+- [x] `README.md` มีขั้นตอน Setup ครบตรงกับการทำงานจริงของโค้ด พร้อมคำเตือนเรื่อง drop DB หากเคย migrate รุ่นเก่า (NFR-07)
+- [ ] `npm test` ผ่านทุก test cases พร้อมแนบผลรันใน PR (หลักฐาน TDD)
+- [ ] เพื่อนร่วมทีมทำตาม README บนเครื่องสะอาดสำเร็จภายใน 15 นาที (AC-F08-01)
 - [ ] PR เข้า `sprint-1-staging` ผ่าน review จาก @atiwit
 
 ---
@@ -107,4 +112,5 @@ F-08 ทำหน้าที่ให้ผู้พัฒนาหรือ re
 | วันที่ | การเปลี่ยนแปลง | เหตุผล |
 |---|---|---|
 | 2026-11-06 | สร้าง v1.0 | ก่อนเริ่ม implement |
-| 2026-11-06 | ปรับปรุง v1.1 | แก้ไขตาม Peer Review: เอา UNIQUE NULLS NOT DISTINCT ออก (ใช้ partial index แทน), ลบ user_id ซ้ำใน habit_entries (3NF/BR-08), ปรับ check constraint minutes (1..960 ตาม D-07), แก้ seed ให้ idempotent และวันสอดคล้อง BR-03, ปรับ error handler NFR-06 |
+| 2026-11-06 | ปรับปรุง v1.1 | แก้ไขตาม Peer Review รอบ 1: เอา UNIQUE NULLS NOT DISTINCT ออก, ลบ user_id ซ้ำใน habit_entries (3NF/BR-08), ปรับ minutes (1..960 ตาม D-07), ปรับ error handler NFR-06 |
+| 2026-11-06 | ปรับปรุง v1.2 | แก้ไขตาม Peer Review รอบ 2:<br>1. คืนค่า DoD 2 รายการที่ยังรอผลรันจริง (`npm test pass` และ `เพื่อนทำตาม README`)<br>2. ถอด `ON DELETE CASCADE` ออกจาก `habit_entries.goal_id` เพื่อป้องกันประวัติสูญหายเงียบๆ<br>3. ปรับปรุง Test Spec ให้ใช้รหัส `TEST-F07-0x` ตรงกันทั้งหมด, ระบุการเช็ค error code `'23505'` และ `'23514'`<br>4. เพิ่ม `TEST-F07-03` สำหรับตรวจสอบ seed idempotency อัตโนมัติ<br>5. ปรับปรุง TEST-F07-01 ให้ shutdown pool A แล้วต่อ pool B ใหม่ เพื่อพิสูจน์ restart อย่างแท้จริง |

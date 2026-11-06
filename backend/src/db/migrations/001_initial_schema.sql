@@ -63,11 +63,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_goals_active
 -- ───────────────────────────────────────────────────────────────
 -- habit_entries
 -- ───────────────────────────────────────────────────────────────
--- หมายเหตุ: ไม่เก็บ user_id ซ้ำใน habit_entries เพื่อลดความซ้ำซ้อนตาม 3NF
--- และป้องกันความไม่สอดคล้องกับ goals.user_id (BR-08 ความเป็นเจ้าของข้อมูล)
+-- หมายเหตุ:
+-- 1. ไม่เก็บ user_id ซ้ำใน habit_entries เพื่อลดความซ้ำซ้อนตาม 3NF
+--    และป้องกันความไม่สอดคล้องกับ goals.user_id (BR-08 ความเป็นเจ้าของข้อมูล)
+-- 2. ไม่ใช้ ON DELETE CASCADE บน goal_id เพื่อป้องกันประวัติการบันทึกสูญหายเงียบๆ
+--    หากมี entries ผูกอยู่กับ goal จะไม่อนุญาตให้ลบ goal โดยตรง (RESTRICT / NO ACTION)
 CREATE TABLE IF NOT EXISTS habit_entries (
   id          SERIAL PRIMARY KEY,
-  goal_id     INTEGER     NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+  goal_id     INTEGER     NOT NULL REFERENCES goals(id),
   entry_date  DATE        NOT NULL,
   -- BR-02 / D-07: นาทีต้อง >= 1 (ไม่รับ 0 นาที) และไม่เกินเพดานแพลตฟอร์ม 960 นาทีต่อวัน
   minutes     INTEGER     NOT NULL

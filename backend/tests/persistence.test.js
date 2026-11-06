@@ -3,13 +3,21 @@
  *
  * Tests for NFR-04, NFR-05 (unique constraint), BR-01, BR-02, BR-05, D-07.
  * Verifies:
- *   - AC-F07-01: data written to DB persists across pool reconnect (simulates restart)
- *   - AC-F07-02: (goal_id, entry_date) unique constraint is enforced (NFR-05, BR-01)
- *   - BR-02 / D-07: entry minutes boundary (0 rejected, 1 accepted, 960 accepted, 961 rejected)
- *   - BR-05: only 1 active goal per template allowed, multiple ended goals allowed
+ *   - TEST-F07-01: data written to DB persists after full pool shutdown and reconnect (simulates restart, NFR-04)
+ *   - TEST-F07-02a: initial habit entry insert succeeds (NFR-05, BR-01)
+ *   - TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code '23505' (NFR-05, BR-01)
+ *   - TEST-F07-02c: different entry dates on the same goal both succeed (NFR-05, BR-01)
+ *   - TEST-F07-03: seed data execution is idempotent across multiple runs (AC-F07-03)
+ *   - TEST-F07-04a: minutes = 0 is rejected by DB check constraint with code '23514' (BR-02, D-07)
+ *   - TEST-F07-04b: minutes = 1 (minimum) is accepted (BR-02)
+ *   - TEST-F07-04c: minutes = 960 (platform ceiling) is accepted (BR-02)
+ *   - TEST-F07-04d: minutes = 961 (above ceiling) is rejected by DB check constraint with code '23514' (BR-02)
+ *   - TEST-F07-05a: multiple ended goals for the same user and template are allowed (BR-05)
+ *   - TEST-F07-05b: second active goal on the same template is rejected with code '23505' (BR-05)
  *
- * Uses a real PostgreSQL connection (TEST_DATABASE_URL).
- * Run with: npm test
+ * Requirements:
+ *   - Must specify TEST_DATABASE_URL in .env.test. Does NOT fallback to DATABASE_URL to prevent data loss.
+ *   - Run with: npm test
  */
 const path = require('path');
 const dotenv = require('dotenv');
@@ -18,8 +26,16 @@ dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env.test') });
 
 const { Pool } = require('pg');
+const seed = require('../src/db/seeds/seed');
 
-const TEST_DB_URL = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+// ไม่อนุญาตให้ fallback ไป DATABASE_URL เด็ดขาด เพื่อป้องกันการลบข้อมูลใน Dev/Production DB
+const TEST_DB_URL = process.env.TEST_DATABASE_URL;
+
+if (!TEST_DB_URL) {
+  throw new Error(
+    '[FATAL] TEST_DATABASE_URL is not set. Refusing to run tests against default database to prevent accidental data loss. Please configure TEST_DATABASE_URL in backend/.env.test'
+  );
+}
 
 let pool;
 
@@ -33,7 +49,7 @@ afterAll(async () => {
   }
 });
 
-// ───── helper ─────────────────────────────────────────────────
+// ───── Helper: ล้างข้อมูลเฉพาะที่ขึ้นต้นด้วย prefix ทดสอบ ─────
 async function cleanupTestData(client, label) {
   await client.query(`DELETE FROM habit_entries WHERE goal_id IN (
     SELECT id FROM goals WHERE user_id IN (
@@ -49,9 +65,9 @@ async function cleanupTestData(client, label) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// AC-F07-01: data persists across pool reconnect (simulates restart)
+// TEST-F07-01: Data persistence across pool restart (NFR-04)
 // ═══════════════════════════════════════════════════════════════
-describe('NFR-04 — data persists after pool reconnect', () => {
+describe('TEST-F07-01 — NFR-04 data persistence across restart', () => {
   const USERNAME = 'test_persist_user';
 
   beforeEach(async () => {
@@ -66,23 +82,23 @@ describe('NFR-04 — data persists after pool reconnect', () => {
     c.release();
   });
 
-  test('AC-F07-01: row written in one client is readable from a new client', async () => {
-    // ── Write ──
-    const clientA = await pool.connect();
-    await clientA.query(
+  test('TEST-F07-01: row written to DB persists after full pool shutdown and reconnect', async () => {
+    // ── Process 1: บันทึกข้อมูลแล้วปิด connection pool ทั้งหมด (จำลอง process exit / restart) ──
+    const poolA = new Pool({ connectionString: TEST_DB_URL });
+    await poolA.query(
       `INSERT INTO users (username, email, password_hash, role)
        VALUES ($1, $2, $3, 'participant')`,
       [USERNAME, 'persist@example.com', '$2b$10$fakehashabcdefghijklmnopqrstuv']
     );
-    clientA.release(); // คืน connection (จำลองการปิด connection)
+    await poolA.end(); // ปิด pool ทั้งหมดโดยสมบูรณ์
 
-    // ── Reconnect & Read (simulates restart) ──
-    const clientB = await pool.connect();
-    const { rows } = await clientB.query(
+    // ── Process 2: เริ่มต้น pool ใหม่ขึ้นมา (จำลองแอปเปิดใหม่หลังรีสตาร์ต) ──
+    const poolB = new Pool({ connectionString: TEST_DB_URL });
+    const { rows } = await poolB.query(
       'SELECT username FROM users WHERE username = $1',
       [USERNAME]
     );
-    clientB.release();
+    await poolB.end();
 
     expect(rows).toHaveLength(1);
     expect(rows[0].username).toBe(USERNAME);
@@ -90,9 +106,9 @@ describe('NFR-04 — data persists after pool reconnect', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// AC-F07-02: unique constraint on (goal_id, entry_date) — NFR-05 / BR-01
+// TEST-F07-02: Unique constraint on (goal_id, entry_date) (NFR-05, BR-01)
 // ═══════════════════════════════════════════════════════════════
-describe('NFR-05 / BR-01 — unique constraint (goal_id, entry_date)', () => {
+describe('TEST-F07-02 — NFR-05 / BR-01 unique constraint (goal_id, entry_date)', () => {
   let pmId, participantId, templateId, goalId;
   const LABEL = 'unique';
 
@@ -139,7 +155,7 @@ describe('NFR-05 / BR-01 — unique constraint (goal_id, entry_date)', () => {
     c.release();
   });
 
-  test('AC-F07-02: first insert succeeds', async () => {
+  test('TEST-F07-02a: initial habit entry insert succeeds', async () => {
     const c = await pool.connect();
     const { rows } = await c.query(
       `INSERT INTO habit_entries (goal_id, entry_date, minutes)
@@ -150,7 +166,7 @@ describe('NFR-05 / BR-01 — unique constraint (goal_id, entry_date)', () => {
     expect(rows[0].id).toBeDefined();
   });
 
-  test('AC-F07-02: duplicate (goal_id, entry_date) is rejected by DB constraint', async () => {
+  test('TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code 23505', async () => {
     const c = await pool.connect();
     await c.query(
       `INSERT INTO habit_entries (goal_id, entry_date, minutes)
@@ -158,18 +174,25 @@ describe('NFR-05 / BR-01 — unique constraint (goal_id, entry_date)', () => {
       [goalId]
     );
 
-    await expect(
-      c.query(
+    let error;
+    try {
+      await c.query(
         `INSERT INTO habit_entries (goal_id, entry_date, minutes)
          VALUES ($1, CURRENT_DATE, 60)`,
         [goalId]
-      )
-    ).rejects.toThrow(/unique/i);
+      );
+    } catch (err) {
+      error = err;
+    } finally {
+      c.release();
+    }
 
-    c.release();
+    expect(error).toBeDefined();
+    // 23505 = unique_violation ใน PostgreSQL
+    expect(error.code).toBe('23505');
   });
 
-  test('AC-F07-02: different dates on the same goal both succeed', async () => {
+  test('TEST-F07-02c: different entry dates on the same goal both succeed', async () => {
     const c = await pool.connect();
     await c.query(
       `INSERT INTO habit_entries (goal_id, entry_date, minutes)
@@ -191,9 +214,40 @@ describe('NFR-05 / BR-01 — unique constraint (goal_id, entry_date)', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// BR-02 / D-07: Habit entry minutes boundary constraints
+// TEST-F07-03: Seed data idempotency (AC-F07-03)
 // ═══════════════════════════════════════════════════════════════
-describe('BR-02 / D-07 — habit_entries minutes boundaries', () => {
+describe('TEST-F07-03 — Seed data idempotency (AC-F07-03)', () => {
+  test('TEST-F07-03: running seed logic twice does not duplicate records', async () => {
+    // รัน seed ครั้งที่ 1
+    await seed(pool);
+
+    const c = await pool.connect();
+    const countUsers1 = await c.query("SELECT COUNT(*) AS cnt FROM users WHERE username IN ('pm_alice', 'participant_bob', 'participant_carol')");
+    const countTmpl1  = await c.query("SELECT COUNT(*) AS cnt FROM activity_templates WHERE name = 'Reading Practice'");
+    const countGoals1 = await c.query("SELECT COUNT(*) AS cnt FROM goals WHERE status = 'active'");
+    const countEntries1 = await c.query("SELECT COUNT(*) AS cnt FROM habit_entries");
+
+    // รัน seed ครั้งที่ 2 ซ้ำ
+    await seed(pool);
+
+    const countUsers2 = await c.query("SELECT COUNT(*) AS cnt FROM users WHERE username IN ('pm_alice', 'participant_bob', 'participant_carol')");
+    const countTmpl2  = await c.query("SELECT COUNT(*) AS cnt FROM activity_templates WHERE name = 'Reading Practice'");
+    const countGoals2 = await c.query("SELECT COUNT(*) AS cnt FROM goals WHERE status = 'active'");
+    const countEntries2 = await c.query("SELECT COUNT(*) AS cnt FROM habit_entries");
+    c.release();
+
+    // จำนวนแถวต้องเท่าเดิม ไม่เพิ่มขึ้น
+    expect(countUsers2.rows[0].cnt).toBe(countUsers1.rows[0].cnt);
+    expect(countTmpl2.rows[0].cnt).toBe(countTmpl1.rows[0].cnt);
+    expect(countGoals2.rows[0].cnt).toBe(countGoals1.rows[0].cnt);
+    expect(countEntries2.rows[0].cnt).toBe(countEntries1.rows[0].cnt);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// TEST-F07-04: Habit entry minutes boundary constraints (BR-02, D-07)
+// ═══════════════════════════════════════════════════════════════
+describe('TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07)', () => {
   let goalId;
   const LABEL = 'minutes_bnd';
 
@@ -233,19 +287,26 @@ describe('BR-02 / D-07 — habit_entries minutes boundaries', () => {
     c.release();
   });
 
-  test('D-07: minutes = 0 is rejected by DB constraint', async () => {
+  test('TEST-F07-04a: minutes = 0 is rejected by DB check constraint with code 23514', async () => {
     const c = await pool.connect();
-    await expect(
-      c.query(
+    let error;
+    try {
+      await c.query(
         `INSERT INTO habit_entries (goal_id, entry_date, minutes)
          VALUES ($1, CURRENT_DATE, 0)`,
         [goalId]
-      )
-    ).rejects.toThrow();
-    c.release();
+      );
+    } catch (err) {
+      error = err;
+    } finally {
+      c.release();
+    }
+    expect(error).toBeDefined();
+    // 23514 = check_violation ใน PostgreSQL
+    expect(error.code).toBe('23514');
   });
 
-  test('BR-02: minutes = 1 (minimum) is accepted', async () => {
+  test('TEST-F07-04b: minutes = 1 (minimum allowed) is accepted', async () => {
     const c = await pool.connect();
     const { rows } = await c.query(
       `INSERT INTO habit_entries (goal_id, entry_date, minutes)
@@ -256,7 +317,7 @@ describe('BR-02 / D-07 — habit_entries minutes boundaries', () => {
     expect(rows[0].id).toBeDefined();
   });
 
-  test('BR-02: minutes = 960 (maximum platform ceiling) is accepted', async () => {
+  test('TEST-F07-04c: minutes = 960 (platform ceiling) is accepted', async () => {
     const c = await pool.connect();
     const { rows } = await c.query(
       `INSERT INTO habit_entries (goal_id, entry_date, minutes)
@@ -267,23 +328,29 @@ describe('BR-02 / D-07 — habit_entries minutes boundaries', () => {
     expect(rows[0].id).toBeDefined();
   });
 
-  test('BR-02: minutes = 961 (above ceiling) is rejected by DB constraint', async () => {
+  test('TEST-F07-04d: minutes = 961 (above platform ceiling) is rejected with code 23514', async () => {
     const c = await pool.connect();
-    await expect(
-      c.query(
+    let error;
+    try {
+      await c.query(
         `INSERT INTO habit_entries (goal_id, entry_date, minutes)
          VALUES ($1, CURRENT_DATE, 961)`,
         [goalId]
-      )
-    ).rejects.toThrow();
-    c.release();
+      );
+    } catch (err) {
+      error = err;
+    } finally {
+      c.release();
+    }
+    expect(error).toBeDefined();
+    expect(error.code).toBe('23514');
   });
 });
 
 // ═══════════════════════════════════════════════════════════════
-// BR-05: Only 1 active goal per template, multiple ended allowed
+// TEST-F07-05: Goals active vs ended status constraint (BR-05)
 // ═══════════════════════════════════════════════════════════════
-describe('BR-05 — goals active status constraint', () => {
+describe('TEST-F07-05 — goals active status constraint (BR-05)', () => {
   let userId, templateId;
   const LABEL = 'goal_status';
 
@@ -319,15 +386,13 @@ describe('BR-05 — goals active status constraint', () => {
     c.release();
   });
 
-  test('BR-05: multiple ended goals for the same user and template are allowed', async () => {
+  test('TEST-F07-05a: multiple ended goals for the same user and template are allowed', async () => {
     const c = await pool.connect();
-    // Goal ที่ ended ตัวที่ 1
     await c.query(
       `INSERT INTO goals (user_id, template_id, target_minutes, start_date, end_date, status)
        VALUES ($1, $2, 300, CURRENT_DATE - 60, CURRENT_DATE - 30, 'ended')`,
       [userId, templateId]
     );
-    // Goal ที่ ended ตัวที่ 2 บน template เดียวกัน — ต้องทำได้
     const secondEnded = await c.query(
       `INSERT INTO goals (user_id, template_id, target_minutes, start_date, end_date, status)
        VALUES ($1, $2, 400, CURRENT_DATE - 29, CURRENT_DATE - 1, 'ended')
@@ -336,7 +401,6 @@ describe('BR-05 — goals active status constraint', () => {
     );
     expect(secondEnded.rows[0].id).toBeDefined();
 
-    // และสร้าง active goal ตัวที่ 1 ได้ด้วย
     const activeGoal = await c.query(
       `INSERT INTO goals (user_id, template_id, target_minutes, start_date, end_date, status)
        VALUES ($1, $2, 500, CURRENT_DATE, CURRENT_DATE + 30, 'active')
@@ -348,24 +412,29 @@ describe('BR-05 — goals active status constraint', () => {
     c.release();
   });
 
-  test('BR-05: second active goal on the same template is rejected', async () => {
+  test('TEST-F07-05b: second active goal on the same template is rejected with code 23505', async () => {
     const c = await pool.connect();
-    // สร้าง active goal ตัวแรก
     await c.query(
       `INSERT INTO goals (user_id, template_id, target_minutes, start_date, end_date, status)
        VALUES ($1, $2, 300, CURRENT_DATE, CURRENT_DATE + 30, 'active')`,
       [userId, templateId]
     );
 
-    // พยายามสร้าง active goal ตัวที่ 2 บน template เดียวกัน — ต้องโยน unique violation
-    await expect(
-      c.query(
+    let error;
+    try {
+      await c.query(
         `INSERT INTO goals (user_id, template_id, target_minutes, start_date, end_date, status)
          VALUES ($1, $2, 600, CURRENT_DATE, CURRENT_DATE + 30, 'active')`,
         [userId, templateId]
-      )
-    ).rejects.toThrow(/unique/i);
+      );
+    } catch (err) {
+      error = err;
+    } finally {
+      c.release();
+    }
 
-    c.release();
+    expect(error).toBeDefined();
+    // 23505 = unique_violation จาก uq_goals_active partial index
+    expect(error.code).toBe('23505');
   });
 });

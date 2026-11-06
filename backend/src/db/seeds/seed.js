@@ -21,7 +21,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
 
 const bcrypt = require('bcrypt');
-const pool   = require('../db');
+const defaultPool = require('../db');
 
 const SALT_ROUNDS = 10;
 
@@ -32,7 +32,7 @@ const SEED_USERS = [
   { username: 'participant_carol', email: 'carol@example.com',  role: 'participant', plain: 'Demo@Carol1' },
 ];
 
-async function seed() {
+async function seed(pool = defaultPool) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -53,7 +53,6 @@ async function seed() {
         [u.username, u.email, hash, u.role]
       );
       userIds[u.username] = rows[0].id;
-      console.log(`[seed] user upserted: ${u.username} (${u.role})`);
     }
 
     // ───── 2. activity_templates (idempotent check & insert) ─────
@@ -65,7 +64,6 @@ async function seed() {
 
     if (existingTmpl.rows.length > 0) {
       templateId = existingTmpl.rows[0].id;
-      console.log(`[seed] template already exists: id=${templateId}`);
     } else {
       const newTmpl = await client.query(
         `INSERT INTO activity_templates (created_by, name, unit, min_value, max_value)
@@ -74,7 +72,6 @@ async function seed() {
         [userIds['pm_alice']]
       );
       templateId = newTmpl.rows[0].id;
-      console.log(`[seed] template created: id=${templateId}`);
     }
 
     // ───── 3. goals & habit_entries (idempotent & BR-03 compliant) ─────
@@ -90,7 +87,6 @@ async function seed() {
 
       if (existingGoal.rows.length > 0) {
         goalId = existingGoal.rows[0].id;
-        console.log(`[seed] goal already exists for ${username}: id=${goalId}`);
       } else {
         // BR-03: ให้ goal เริ่มต้นย้อนหลัง 7 วัน เพื่อให้ sample entries อยู่ในช่วง [start_date, end_date]
         const newGoal = await client.query(
@@ -100,12 +96,9 @@ async function seed() {
           [userId, templateId]
         );
         goalId = newGoal.rows[0].id;
-        console.log(`[seed] goal created for ${username}: id=${goalId}`);
       }
 
       // habit_entries sample (3 วันย้อนหลัง: 1, 2, 3 วันก่อนหน้า)
-      // วันที่เหล่านี้อยู่หลัง start_date (7 วันก่อน) ถูกต้องตาม BR-03
-      // และไม่เก็บ user_id ซ้ำตาม schema ใหม่
       const sampleMinutes = [30, 45, 60];
       for (let i = 0; i < sampleMinutes.length; i++) {
         const daysAgo = i + 1;
@@ -118,19 +111,28 @@ async function seed() {
           [goalId, daysAgo, sampleMinutes[i]]
         );
       }
-      console.log(`[seed] sample entries upserted for ${username}`);
     }
 
     await client.query('COMMIT');
-    console.log('[seed] done');
+    return { success: true };
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
-    console.error('[seed] ERROR:', err.message);
-    process.exit(1);
+    throw err;
   } finally {
     client.release();
-    await pool.end();
   }
 }
 
-seed();
+if (require.main === module) {
+  seed(defaultPool)
+    .then(() => {
+      console.log('[seed] done');
+      return defaultPool.end();
+    })
+    .catch((err) => {
+      console.error('[seed] ERROR:', err.message);
+      process.exit(1);
+    });
+}
+
+module.exports = seed;

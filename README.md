@@ -40,6 +40,12 @@
 | npm | 10 ขึ้นไป (มาพร้อม Node.js 20) |
 | PostgreSQL | 14 ขึ้นไป |
 
+> **⚠️ หมายเหตุสำคัญสำหรับการทดสอบ/อัปเดต:**  
+> มีการปรับปรุงโครงสร้างใน `001_initial_schema.sql` ให้ตรงตาม SRS ล่าสุดก่อนขึ้น release หากคุณเคยรัน migration ด้วยเวอร์ชันก่อนหน้า จะต้อง **Drop และสร้างฐานข้อมูลใหม่** ก่อนรัน migration เพื่อป้องกัน schema mismatch (เช่น คอลัมน์ `user_id` ใน `habit_entries` ที่ถูกนำออก):
+> ```bash
+> psql -U postgres -c "DROP DATABASE study_habit; CREATE DATABASE study_habit;"
+> ```
+
 ### ขั้นตอนการติดตั้ง
 
 ```bash
@@ -75,15 +81,15 @@ curl http://localhost:3000/health
 ### รันเทสต์
 
 ```bash
-# ตั้งค่า test database (ทำครั้งเดียว)
+# 1. ตั้งค่า test database (ทำครั้งเดียว)
 cp .env.test.example .env.test
 # แก้ TEST_DATABASE_URL ใน .env.test ให้ชี้ไปยัง study_habit_test
 # สร้าง DB: CREATE DATABASE study_habit_test;
 
-# รัน migration ใน test DB:
+# 2. รัน migration ใน test DB:
 DATABASE_URL=<TEST_DATABASE_URL> npm run migrate
 
-# รันเทสต์ทั้งหมด
+# 3. รันเทสต์ทั้งหมด
 npm test
 ```
 
