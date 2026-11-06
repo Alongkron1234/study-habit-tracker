@@ -1,6 +1,7 @@
 # secrets และ config ในเครื่อง
 .env
-.env.*
+
+!.env.test.example
 !.env.example
 
 # dependency และ build
