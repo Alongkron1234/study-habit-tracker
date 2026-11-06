@@ -10,6 +10,7 @@ const express   = require('express');
 const session   = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const pool      = require('./db/db');
+const { notFound, errorHandler } = require('./middleware/errors');
 
 /**
  * @param {object} [options]
@@ -32,8 +33,10 @@ function createApp(options = {}) {
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    rolling: false, // S-3: อายุคงที่ นับจาก login ไม่ต่ออายุเมื่อใช้งาน
     cookie: {
       httpOnly: true,
+      sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       maxAge: (parseInt(process.env.SESSION_TTL_HOURS, 10) || 8) * 60 * 60 * 1000,
     },
@@ -49,7 +52,9 @@ function createApp(options = {}) {
     }
   });
 
-  // ─── Feature routers (mounted by later branches) ───────────────
+  // ─── Feature routers ───────────────────────────────────────────
+  app.use('/api/auth', require('./routes/auth'));
+  // (mounted by later branches)
   // app.use('/api/templates', require('./routes/templates'));
   // app.use('/api/goals',     require('./routes/goals'));
   // app.use('/api/entries',   require('./routes/entries'));
@@ -58,26 +63,9 @@ function createApp(options = {}) {
     options.mountRoutes(app);
   }
 
-  // ─── Global error handler (NFR-06 — safe error format) ────────
-  // eslint-disable-next-line no-unused-vars
-  app.use((err, _req, res, _next) => {
-    const status = err.status && Number.isInteger(err.status) ? err.status : 500;
-
-    // Log ข้อผิดพลาดจริงฝั่งเซิร์ฟเวอร์เท่านั้น
-    console.error('[server error]', err);
-
-    // NFR-06: หากเป็น 500 หรือ server error ให้ตอบข้อความกลางๆ เสมอ เพื่อไม่เปิดเผยข้อมูลภายใน
-    if (status >= 500) {
-      return res.status(500).json({
-        error: 'Internal Server Error',
-      });
-    }
-
-    // Client errors (4xx) ตอบข้อความ error ปลอดภัย
-    return res.status(status).json({
-      error: err.message || 'Bad Request',
-    });
-  });
+  // ─── 404 และ error handler (NFR-06 — รูปแบบ error ที่ปลอดภัย) ──
+  app.use(notFound);
+  app.use(errorHandler);
 
   return app;
 }
