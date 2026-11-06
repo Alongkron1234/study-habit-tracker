@@ -12,10 +12,10 @@
 | FR-01 login | F-01 | 1 | API integration: login ถูก/ผิด | 1 | implement แล้ว — AC-F01-01, 02 · TEST-F01-01, 02a–c ผ่าน (@c7c0508) |
 | FR-02 logout | F-01 | 1 | API integration: ใช้ session หลัง logout ไม่ได้ | 1 | implement แล้ว — AC-F01-04 · TEST-F01-04a, b ผ่าน (@c7c0508) |
 | FR-03 ผู้ใช้ปัจจุบัน | F-01 | 1 | API integration | 1 | implement แล้ว — AC-F01-03 · TEST-F01-03 ผ่าน (@c7c0508) |
-| FR-04 PM สร้างแม่แบบ | F-03 | 1 | API integration + persistence | 1 | วางแผน |
-| FR-05 PM ดูรายการแม่แบบ | F-03 | 1 | API integration | 1 | วางแผน |
-| FR-06 Participant ดูแม่แบบ | F-03 | 1 | API integration | 1 | วางแผน |
-| FR-07 ตั้งเป้าหมาย | F-04 | 1 | API integration + unit | 1 | วางแผน |
+| FR-04 PM สร้างแม่แบบ | F-03 | 1 | API integration + persistence | 1 | ผ่าน — AC-F03-01 · TEST-F03-01 (@b081a81) |
+| FR-05 PM ดูรายการแม่แบบ | F-03 | 1 | API integration | 1 | ผ่าน — AC-F03-04 · TEST-F03-04 (@b081a81) |
+| FR-06 Participant ดูแม่แบบ | F-03 | 1 | API integration | 1 | ผ่าน — AC-F03-05 · TEST-F03-05 (@b081a81) |
+| FR-07 ตั้งเป้าหมาย | F-04 | 1 | API integration + unit | 1 | ผ่าน — AC-F04-01 · TEST-F04-01 (@b081a81) |
 | FR-08 บันทึกรายวัน | F-05 | 1 | API integration + E2E journey | 1 | วางแผน |
 | FR-09 ดูความคืบหน้า | F-06 | 1 | Unit (คำนวณ) + API | 1 | วางแผน |
 | FR-10 ดูประวัติ | F-06 | 1 | API integration | 1 | วางแผน |
@@ -31,14 +31,14 @@
 | Requirement | Feature | Sprint (สร้าง) | วิธีตรวจสอบ (วางแผน) | Sprint (ตรวจ) | สถานะ |
 |---|---|---|---|---|---|
 | BR-01 1 entry ต่อวัน | F-05 (คงไว้ใน F-11) | 1 | Unit + DB integration (unique) | 1 | วางแผน |
-| BR-02 ช่วงค่า entry | F-03 (นิยาม), F-05 (บังคับ) | 1 | Unit boundary: 0, 1, 960, 961, ทศนิยม | 1 | วางแผน |
+| BR-02 ช่วงค่า entry | F-03 (นิยาม), F-05 (บังคับ) | 1 | Unit boundary: 0, 1, 960, 961, ทศนิยม | 1 | ส่วนแม่แบบผ่าน — AC-F03-03 · TEST-F03-03a–c, TEST-F03-U1 (@b081a81); ส่วน entry รอ F-05 |
 | BR-03 ช่วงวันที่ entry | F-05 | 1 | Unit boundary: วันนี้, พรุ่งนี้, ย้อน 7 และ 8 วัน, นอกช่วงเป้าหมาย | 1 | วางแผน |
-| BR-04 เงื่อนไขเป้าหมาย | F-04 | 1 | Unit boundary | 1 | วางแผน |
-| BR-05 สถานะเป้าหมาย / 1 active ต่อแม่แบบ | F-04, F-05 | 1 | Unit + API (entry หลังสิ้นสุด, เป้าหมายซ้อน) | 1 | วางแผน |
+| BR-04 เงื่อนไขเป้าหมาย | F-04 | 1 | Unit boundary | 1 | ผ่าน — AC-F04-02 · TEST-F04-02a–e, TEST-F03-U1 (@b081a81) |
+| BR-05 สถานะเป้าหมาย / 1 active ต่อแม่แบบ | F-04, F-05 | 1 | Unit + API (entry หลังสิ้นสุด, เป้าหมายซ้อน) | 1 | ส่วนเป้าหมายผ่าน — AC-F04-03, AC-F04-07 · TEST-F04-03a–e, TEST-F04-07 (@b081a81); ส่วน entry หลังสิ้นสุดรอ F-05 |
 | BR-06 คำนวณความคืบหน้า | F-06 | 1 | Unit (รวม case เกินเป้า) | 1 | วางแผน |
-| BR-07 เฉพาะ PM จัดการแม่แบบ | F-02, F-03 | 1 | API role test | 1 | ส่วน middleware ผ่าน — AC-F02-02 · TEST-F02-02a–c (@c7c0508) รอตรวจกับ endpoint จริงใน F-03 |
-| BR-08 ข้อมูลเป็นของเจ้าของ / PM อ่านไม่ได้ | F-02, F-04, F-05, F-06 | 1 | API ownership + role test | 1 | ส่วน middleware ผ่าน — AC-F02-03 · TEST-F02-03a–c (@c7c0508) รอตรวจกับ endpoint จริงใน F-04 ถึง F-06 |
-| BR-09 หน่วยคงที่ | F-03, F-05 | 1 | Unit | 1 | วางแผน |
+| BR-07 เฉพาะ PM จัดการแม่แบบ | F-02, F-03 | 1 | API role test | 1 | ส่วน middleware ผ่าน — AC-F02-02 · TEST-F02-02a–c (@c7c0508) รอตรวจกับ endpoint จริงใน F-03; endpoint แม่แบบผ่าน — AC-F03-02 · TEST-F03-02 (@b081a81) |
+| BR-08 ข้อมูลเป็นของเจ้าของ / PM อ่านไม่ได้ | F-02, F-04, F-05, F-06 | 1 | API ownership + role test | 1 | ส่วน middleware ผ่าน — AC-F02-03 · TEST-F02-03a–c (@c7c0508) รอตรวจกับ endpoint จริงใน F-04 ถึง F-06; endpoint เป้าหมายผ่าน — AC-F04-05, AC-F04-06 · TEST-F04-05, 06a–b (@b081a81); รอ F-05/F-06 |
+| BR-09 หน่วยคงที่ | F-03, F-05 | 1 | Unit | 1 | ส่วนแม่แบบผ่าน — AC-F03-01, AC-F03-03 · TEST-F03-01, TEST-F03-03c (@b081a81); ส่วน entry รอ F-05 |
 
 ## 3. Non-Functional Requirements
 

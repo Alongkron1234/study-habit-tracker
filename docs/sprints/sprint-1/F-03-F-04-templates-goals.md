@@ -127,13 +127,13 @@ Level: API integration (supertest + Postgres จริง) ยกเว้น `v
 
 ## 5. Definition of Done และหลักฐาน
 
-- [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก)
-- [ ] เทสต์ทุกข้อใน §4 เขียนก่อนโค้ดและบันทึกผลรัน **fail** พร้อม commit (`docs/sprints/sprint-1/evidence/F-03-F-04-red-run.txt`)
-- [ ] โค้ดครบตาม §2 และ `npm test` ผ่านทุกเทสต์ พร้อม output และ commit ที่ทดสอบ (`...green-run.txt`)
-- [ ] เทสต์ของ F-07, F-01, F-02 ยังผ่าน (regression) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
-- [ ] response ไม่มี `user_id`, `created_by`, secret; ไม่มี SQL/stack ใน error
-- [ ] `docs/traceability.md` อัปเดตแถว FR-04–07, BR-02 (ส่วนแม่แบบ), BR-04, BR-05, BR-07, BR-08, BR-09 ด้วยเลข AC/TEST
-- [ ] `docs/system-sds.md` §4.2 ปรับสถานะ endpoint ให้ตรงของจริง
+- [x] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — `bdcdc5a`
+- [x] เทสต์ทุกข้อใน §4 เขียนก่อนโค้ดและบันทึกผลรัน **fail** พร้อม commit — เทสต์ `b26be93`, ผลรัน `evidence/F-03-F-04-red-run.txt` (90 fail / 46 pass)
+- [x] โค้ดครบตาม §2 และ `npm test` ผ่านทุกเทสต์ — โค้ด `b081a81`, ผลรัน `evidence/F-03-F-04-green-run.txt` (136/136)
+- [x] เทสต์ของ F-07, F-01, F-02 ยังผ่าน (รวมอยู่ใน 136/136) (regression) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
+- [x] response ไม่มี `user_id`, `created_by`, secret; ไม่มี SQL/stack ใน error
+- [x] `docs/traceability.md` อัปเดตแถว FR-04–07, BR-02 (ส่วนแม่แบบ), BR-04, BR-05, BR-07, BR-08, BR-09 ด้วยเลข AC/TEST
+- [ ] `docs/system-sds.md` §4.2 ปรับสถานะ endpoint (ไฟล์อยู่ใน PR #8 ที่ยังไม่ merge จึงทำหลัง PR #8 merge เข้า staging)
 - [ ] PR เข้า `sprint-1-staging` ผ่าน review จาก @atiwit (ผู้เขียนไม่อนุมัติเอง)
 
 ---
