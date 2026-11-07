@@ -1,0 +1,17 @@
+﻿
+> frontend@0.0.0 test
+> vitest run --run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mC:/Users/EgqZ/Downloads/SE/study-habit-tracker/frontend[39m
+
+ [32m✓[39m src/tests/components.test.jsx [2m([22m[2m3 tests[22m[2m)[22m[32m 271[2mms[22m[39m
+ [32m✓[39m src/tests/auth.test.jsx [2m([22m[2m6 tests[22m[2m)[22m[33m 1296[2mms[22m[39m
+     [33m[2m✓[22m[39m TEST-UI-02a: AC-UI-02 Login สำเร็จ นำทางไปหน้า Dashboard แสดงชื่อผู้ใช้และ role [33m 479[2mms[22m[39m
+     [33m[2m✓[22m[39m TEST-UI-02b: AC-UI-02 Login ผิดพลาด (401) แสดงข้อความ Invalid username or password (NFR-06) [33m 452[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m9 passed[39m[22m[90m (9)[39m
+[2m   Start at [22m 18:46:49
+[2m   Duration [22m 4.19s[2m (transform 223ms, setup 688ms, import 615ms, tests 1.57s, environment 3.79s)[22m
+
