@@ -18,3 +18,4 @@ export async function getMe() {
     method: 'GET',
   });
 }
+

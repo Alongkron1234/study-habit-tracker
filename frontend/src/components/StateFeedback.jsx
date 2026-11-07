@@ -30,3 +30,4 @@ export function ErrorAlert({ message = 'An error occurred', onRetry = null }) {
     </div>
   );
 }
+

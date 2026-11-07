@@ -44,3 +44,4 @@ describe('StateFeedback Components (AC-UI-05)', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });
+
