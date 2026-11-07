@@ -1,0 +1,1696 @@
+# RED run — F-03/F-04 (tests written before implementation)
+commit: b26be9332132e3a8dad0978f3b59204f8fbbe5df
+date:   2026-11-06T17:32:09Z
+command: cd backend && npm test
+
+อธิบาย: routes ยังไม่ถูก mount (ได้ 404 แทน 201/400/401/403/409) และ src/lib/dates.js, validate.js เป็น stub ที่ throw "not implemented"
+suite เดิม (auth, persistence) ยังผ่าน = ไม่มี regression; fail ทั้งหมดมาจากฟีเจอร์ที่ยังไม่ทำ ไม่ใช่ปัญหา setup
+
+
+> study-habit-tracker-backend@0.1.0 test
+> jest --forceExit --runInBand
+
+FAIL tests/goals.test.js
+  TEST-F04-01 — สร้างเป้าหมาย (AC-F04-01)
+    ✕ TEST-F04-01: 201, active, เจ้าของ = ผู้ใช้, ไม่มี user_id ใน response (9 ms)
+  TEST-F04-02 — validation (AC-F04-02, BR-04)
+    ✕ TEST-F04-02a: target_minutes=0 → 400 (1 ms)
+    ✕ TEST-F04-02a: target_minutes=-5 → 400 (2 ms)
+    ✕ TEST-F04-02a: target_minutes=1.5 → 400 (1 ms)
+    ✕ TEST-F04-02a: target_minutes="100" → 400 (1 ms)
+    ✕ TEST-F04-02a: target_minutes=1 → 201 (1 ms)
+    ✕ TEST-F04-02b: end_date="2026-02-30" → 400 (2 ms)
+    ✕ TEST-F04-02b: end_date="x" → 400 (1 ms)
+    ✕ TEST-F04-02b: end_date=undefined → 400 (1 ms)
+    ✕ TEST-F04-02b: start_date ผิดรูปแบบ → 400 (1 ms)
+    ✕ TEST-F04-02c: end ก่อน start → 400; end = start → 201 (1 ms)
+    ✕ TEST-F04-02d: start เมื่อวาน → 400; start วันนี้ → 201 (1 ms)
+    ✕ TEST-F04-02e: 366 วัน → 400; 365 วัน (นับรวมปลาย) → 201 (1 ms)
+  TEST-F04-03 — 1 active ต่อแม่แบบ (AC-F04-03, BR-05)
+    ✕ TEST-F04-03a: ซ้ำในแม่แบบเดียวกัน → 409 และจำนวนไม่เพิ่ม (2 ms)
+    ✕ TEST-F04-03b: คนละแม่แบบ → 201 (1 ms)
+    ✕ TEST-F04-03c: 5 คำขอพร้อมกัน → สำเร็จ 1 ที่เหลือ 409 ไม่มี 500 (8 ms)
+    ✕ TEST-F04-03d: goal เก่าที่ end_date ผ่านแล้ว (status ยัง active) ไม่ขวาง และถูกปรับเป็น ended (2 ms)
+    ✕ TEST-F04-03e: คนละผู้ใช้สร้างในแม่แบบเดียวกันได้ (1 ms)
+  TEST-F04-04 — แม่แบบไม่ถูกต้อง (AC-F04-04)
+    ✓ TEST-F04-04: template_id=999999 → 404 (1 ms)
+    ✓ TEST-F04-04: template_id="archived" → 404 (1 ms)
+    ✕ TEST-F04-04: template_id ไม่ใช่ตัวเลข → 400 (1 ms)
+  TEST-F04-05 — PM ถูกปฏิเสธ (AC-F04-05, BR-08)
+    ✕ TEST-F04-05: PM POST/GET /goals → 403 (2 ms)
+  TEST-F04-06 — ความเป็นเจ้าของ (AC-F04-06, BR-08)
+    ✕ TEST-F04-06a: รายการเห็นเฉพาะของตน (2 ms)
+    ✕ TEST-F04-06b: GET /goals/:id เจ้าของ 200 / คนอื่น 404 / PM 403 / id ไม่ใช่เลข 404 (1 ms)
+  TEST-F04-07 — สถานะคำนวณจากวันที่ (AC-F04-07, BR-05)
+    ✕ TEST-F04-07: end เมื่อวาน → ended; end วันนี้ → active (1 ms)
+  TEST-F04-08 — ต้อง login (NFR-01)
+    ✕ TEST-F04-08: post /api/goals → 401 (1 ms)
+    ✕ TEST-F04-08: get /api/goals → 401
+    ✕ TEST-F04-08: get /api/goals/1 → 401 (1 ms)
+
+  ● TEST-F04-01 — สร้างเป้าหมาย (AC-F04-01) › TEST-F04-01: 201, active, เจ้าของ = ผู้ใช้, ไม่มี user_id ใน response
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 404
+
+      50 |   test('TEST-F04-01: 201, active, เจ้าของ = ผู้ใช้, ไม่มี user_id ใน response', async () => {
+      51 |     const res = await create(aCookie, goalBody(t1));
+    > 52 |     expect(res.status).toBe(201);
+         |                        ^
+      53 |     expect(res.body.goal).toMatchObject({ template_id: t1, target_minutes: 600, status: 'active' });
+      54 |     expect(res.body.goal).not.toHaveProperty('user_id');
+      55 |     const { rows } = await pool.query('SELECT user_id FROM goals WHERE id=$1', [res.body.goal.id]);
+
+      at Object.toBe (tests/goals.test.js:52:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02a: target_minutes=0 → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      61 |   test.each([[0], [-5], [1.5], ['100']])('TEST-F04-02a: target_minutes=%p → 400', async (v) => {
+      62 |     const res = await create(aCookie, goalBody(t1, { target_minutes: v }));
+    > 63 |     expect(res.status).toBe(400);
+         |                        ^
+      64 |     expect(res.body.fields).toHaveProperty('target_minutes');
+      65 |     expect(await countGoals(aId, t1)).toBe(0);
+      66 |   });
+
+      at toBe (tests/goals.test.js:63:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02a: target_minutes=-5 → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      61 |   test.each([[0], [-5], [1.5], ['100']])('TEST-F04-02a: target_minutes=%p → 400', async (v) => {
+      62 |     const res = await create(aCookie, goalBody(t1, { target_minutes: v }));
+    > 63 |     expect(res.status).toBe(400);
+         |                        ^
+      64 |     expect(res.body.fields).toHaveProperty('target_minutes');
+      65 |     expect(await countGoals(aId, t1)).toBe(0);
+      66 |   });
+
+      at toBe (tests/goals.test.js:63:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02a: target_minutes=1.5 → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      61 |   test.each([[0], [-5], [1.5], ['100']])('TEST-F04-02a: target_minutes=%p → 400', async (v) => {
+      62 |     const res = await create(aCookie, goalBody(t1, { target_minutes: v }));
+    > 63 |     expect(res.status).toBe(400);
+         |                        ^
+      64 |     expect(res.body.fields).toHaveProperty('target_minutes');
+      65 |     expect(await countGoals(aId, t1)).toBe(0);
+      66 |   });
+
+      at toBe (tests/goals.test.js:63:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02a: target_minutes="100" → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      61 |   test.each([[0], [-5], [1.5], ['100']])('TEST-F04-02a: target_minutes=%p → 400', async (v) => {
+      62 |     const res = await create(aCookie, goalBody(t1, { target_minutes: v }));
+    > 63 |     expect(res.status).toBe(400);
+         |                        ^
+      64 |     expect(res.body.fields).toHaveProperty('target_minutes');
+      65 |     expect(await countGoals(aId, t1)).toBe(0);
+      66 |   });
+
+      at toBe (tests/goals.test.js:63:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02a: target_minutes=1 → 201
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 404
+
+      66 |   });
+      67 |   test('TEST-F04-02a: target_minutes=1 → 201', async () => {
+    > 68 |     expect((await create(aCookie, goalBody(t1, { target_minutes: 1 }))).status).toBe(201);
+         |                                                                                 ^
+      69 |   });
+      70 |   test.each([['2026-02-30'], ['x'], [undefined]])('TEST-F04-02b: end_date=%p → 400', async (v) => {
+      71 |     const res = await create(aCookie, goalBody(t1, { end_date: v }));
+
+      at Object.toBe (tests/goals.test.js:68:81)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02b: end_date="2026-02-30" → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      70 |   test.each([['2026-02-30'], ['x'], [undefined]])('TEST-F04-02b: end_date=%p → 400', async (v) => {
+      71 |     const res = await create(aCookie, goalBody(t1, { end_date: v }));
+    > 72 |     expect(res.status).toBe(400);
+         |                        ^
+      73 |     expect(res.body.fields).toHaveProperty('end_date');
+      74 |   });
+      75 |   test('TEST-F04-02b: start_date ผิดรูปแบบ → 400', async () => {
+
+      at toBe (tests/goals.test.js:72:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02b: end_date="x" → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      70 |   test.each([['2026-02-30'], ['x'], [undefined]])('TEST-F04-02b: end_date=%p → 400', async (v) => {
+      71 |     const res = await create(aCookie, goalBody(t1, { end_date: v }));
+    > 72 |     expect(res.status).toBe(400);
+         |                        ^
+      73 |     expect(res.body.fields).toHaveProperty('end_date');
+      74 |   });
+      75 |   test('TEST-F04-02b: start_date ผิดรูปแบบ → 400', async () => {
+
+      at toBe (tests/goals.test.js:72:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02b: end_date=undefined → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      70 |   test.each([['2026-02-30'], ['x'], [undefined]])('TEST-F04-02b: end_date=%p → 400', async (v) => {
+      71 |     const res = await create(aCookie, goalBody(t1, { end_date: v }));
+    > 72 |     expect(res.status).toBe(400);
+         |                        ^
+      73 |     expect(res.body.fields).toHaveProperty('end_date');
+      74 |   });
+      75 |   test('TEST-F04-02b: start_date ผิดรูปแบบ → 400', async () => {
+
+      at toBe (tests/goals.test.js:72:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02b: start_date ผิดรูปแบบ → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      75 |   test('TEST-F04-02b: start_date ผิดรูปแบบ → 400', async () => {
+      76 |     const res = await create(aCookie, goalBody(t1, { start_date: '2026-1-5' }));
+    > 77 |     expect(res.status).toBe(400);
+         |                        ^
+      78 |     expect(res.body.fields).toHaveProperty('start_date');
+      79 |   });
+      80 |   test('TEST-F04-02c: end ก่อน start → 400; end = start → 201', async () => {
+
+      at Object.toBe (tests/goals.test.js:77:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02c: end ก่อน start → 400; end = start → 201
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      81 |     const t = todayBkk();
+      82 |     const bad = await create(aCookie, goalBody(t1, { start_date: addDays(t, 5), end_date: addDays(t, 4) }));
+    > 83 |     expect(bad.status).toBe(400);
+         |                        ^
+      84 |     expect(bad.body.fields).toHaveProperty('end_date');
+      85 |     expect((await create(aCookie, goalBody(t1, { start_date: addDays(t, 5), end_date: addDays(t, 5) }))).status).toBe(201);
+      86 |   });
+
+      at Object.toBe (tests/goals.test.js:83:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02d: start เมื่อวาน → 400; start วันนี้ → 201
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      88 |     const t = todayBkk();
+      89 |     const bad = await create(aCookie, goalBody(t1, { start_date: addDays(t, -1), end_date: addDays(t, 10) }));
+    > 90 |     expect(bad.status).toBe(400);
+         |                        ^
+      91 |     expect(bad.body.fields).toHaveProperty('start_date');
+      92 |     expect((await create(aCookie, goalBody(t1, { start_date: t }))).status).toBe(201);
+      93 |   });
+
+      at Object.toBe (tests/goals.test.js:90:24)
+
+  ● TEST-F04-02 — validation (AC-F04-02, BR-04) › TEST-F04-02e: 366 วัน → 400; 365 วัน (นับรวมปลาย) → 201
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      94 |   test('TEST-F04-02e: 366 วัน → 400; 365 วัน (นับรวมปลาย) → 201', async () => {
+      95 |     const t = todayBkk();
+    > 96 |     expect((await create(aCookie, goalBody(t1, { start_date: t, end_date: addDays(t, 365) }))).status).toBe(400);
+         |                                                                                                        ^
+      97 |     expect((await create(aCookie, goalBody(t1, { start_date: t, end_date: addDays(t, 364) }))).status).toBe(201);
+      98 |   });
+      99 | });
+
+      at Object.toBe (tests/goals.test.js:96:104)
+
+  ● TEST-F04-03 — 1 active ต่อแม่แบบ (AC-F04-03, BR-05) › TEST-F04-03a: ซ้ำในแม่แบบเดียวกัน → 409 และจำนวนไม่เพิ่ม
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 404
+
+      103 |     await create(aCookie, goalBody(t1));
+      104 |     const res = await create(aCookie, goalBody(t1));
+    > 105 |     expect(res.status).toBe(409);
+          |                        ^
+      106 |     expect(res.body).toEqual({ error: 'Conflict' });
+      107 |     expect(await countGoals(aId, t1)).toBe(1);
+      108 |   });
+
+      at Object.toBe (tests/goals.test.js:105:24)
+
+  ● TEST-F04-03 — 1 active ต่อแม่แบบ (AC-F04-03, BR-05) › TEST-F04-03b: คนละแม่แบบ → 201
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 404
+
+      109 |   test('TEST-F04-03b: คนละแม่แบบ → 201', async () => {
+      110 |     await create(aCookie, goalBody(t1));
+    > 111 |     expect((await create(aCookie, goalBody(t2))).status).toBe(201);
+          |                                                          ^
+      112 |   });
+      113 |   test('TEST-F04-03c: 5 คำขอพร้อมกัน → สำเร็จ 1 ที่เหลือ 409 ไม่มี 500', async () => {
+      114 |     const results = await Promise.all(Array.from({ length: 5 }, () => create(aCookie, goalBody(t1))));
+
+      at Object.toBe (tests/goals.test.js:111:58)
+
+  ● TEST-F04-03 — 1 active ต่อแม่แบบ (AC-F04-03, BR-05) › TEST-F04-03c: 5 คำขอพร้อมกัน → สำเร็จ 1 ที่เหลือ 409 ไม่มี 500
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 5
+    + Received  + 5
+
+      Array [
+    -   201,
+    -   409,
+    -   409,
+    -   409,
+    -   409,
+    +   404,
+    +   404,
+    +   404,
+    +   404,
+    +   404,
+      ]
+
+      114 |     const results = await Promise.all(Array.from({ length: 5 }, () => create(aCookie, goalBody(t1))));
+      115 |     const codes = results.map((r) => r.status).sort();
+    > 116 |     expect(codes).toEqual([201, 409, 409, 409, 409]);
+          |                   ^
+      117 |     const { rows } = await pool.query("SELECT count(*) FROM goals WHERE user_id=$1 AND template_id=$2 AND status='active'", [aId, t1]);
+      118 |     expect(Number(rows[0].count)).toBe(1);
+      119 |   });
+
+      at Object.toEqual (tests/goals.test.js:116:19)
+
+  ● TEST-F04-03 — 1 active ต่อแม่แบบ (AC-F04-03, BR-05) › TEST-F04-03d: goal เก่าที่ end_date ผ่านแล้ว (status ยัง active) ไม่ขวาง และถูกปรับเป็น ended
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 404
+
+      125 |     );
+      126 |     const res = await create(aCookie, goalBody(t1));
+    > 127 |     expect(res.status).toBe(201);
+          |                        ^
+      128 |     const { rows } = await pool.query('SELECT status FROM goals WHERE id=$1', [old.rows[0].id]);
+      129 |     expect(rows[0].status).toBe('ended');
+      130 |   });
+
+      at Object.toBe (tests/goals.test.js:127:24)
+
+  ● TEST-F04-03 — 1 active ต่อแม่แบบ (AC-F04-03, BR-05) › TEST-F04-03e: คนละผู้ใช้สร้างในแม่แบบเดียวกันได้
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 404
+
+      130 |   });
+      131 |   test('TEST-F04-03e: คนละผู้ใช้สร้างในแม่แบบเดียวกันได้', async () => {
+    > 132 |     expect((await create(aCookie, goalBody(t1))).status).toBe(201);
+          |                                                          ^
+      133 |     expect((await create(bCookie, goalBody(t1))).status).toBe(201);
+      134 |   });
+      135 | });
+
+      at Object.toBe (tests/goals.test.js:132:58)
+
+  ● TEST-F04-04 — แม่แบบไม่ถูกต้อง (AC-F04-04) › TEST-F04-04: template_id ไม่ใช่ตัวเลข → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      142 |   });
+      143 |   test('TEST-F04-04: template_id ไม่ใช่ตัวเลข → 400', async () => {
+    > 144 |     expect((await create(aCookie, goalBody('abc'))).status).toBe(400);
+          |                                                             ^
+      145 |   });
+      146 | });
+      147 |
+
+      at Object.toBe (tests/goals.test.js:144:61)
+
+  ● TEST-F04-05 — PM ถูกปฏิเสธ (AC-F04-05, BR-08) › TEST-F04-05: PM POST/GET /goals → 403
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      150 |     const p = await create(pmCookie, goalBody(t1));
+      151 |     const g = await request(app).get('/api/goals').set('Cookie', pmCookie);
+    > 152 |     expect(p.status).toBe(403);
+          |                      ^
+      153 |     expect(g.status).toBe(403);
+      154 |     expect(await countGoals(pmId, t1)).toBe(0);
+      155 |   });
+
+      at Object.toBe (tests/goals.test.js:152:22)
+
+  ● TEST-F04-06 — ความเป็นเจ้าของ (AC-F04-06, BR-08) › TEST-F04-06a: รายการเห็นเฉพาะของตน
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      161 |     const b = await create(bCookie, goalBody(t1));
+      162 |     const res = await request(app).get('/api/goals').set('Cookie', aCookie);
+    > 163 |     expect(res.status).toBe(200);
+          |                        ^
+      164 |     const ids = res.body.goals.map((g) => g.id);
+      165 |     expect(ids).toContain(a.body.goal.id);
+      166 |     expect(ids).not.toContain(b.body.goal.id);
+
+      at Object.toBe (tests/goals.test.js:163:24)
+
+  ● TEST-F04-06 — ความเป็นเจ้าของ (AC-F04-06, BR-08) › TEST-F04-06b: GET /goals/:id เจ้าของ 200 / คนอื่น 404 / PM 403 / id ไม่ใช่เลข 404
+
+    TypeError: Cannot read properties of undefined (reading 'id')
+
+      168 |   test('TEST-F04-06b: GET /goals/:id เจ้าของ 200 / คนอื่น 404 / PM 403 / id ไม่ใช่เลข 404', async () => {
+      169 |     const a = await create(aCookie, goalBody(t1));
+    > 170 |     const url = `/api/goals/${a.body.goal.id}`;
+          |                                           ^
+      171 |     expect((await request(app).get(url).set('Cookie', aCookie)).status).toBe(200);
+      172 |     expect((await request(app).get(url).set('Cookie', bCookie)).status).toBe(404);
+      173 |     expect((await request(app).get(url).set('Cookie', pmCookie)).status).toBe(403);
+
+      at Object.id (tests/goals.test.js:170:43)
+
+  ● TEST-F04-07 — สถานะคำนวณจากวันที่ (AC-F04-07, BR-05) › TEST-F04-07: end เมื่อวาน → ended; end วันนี้ → active
+
+    TypeError: Cannot read properties of undefined (reading 'map')
+
+      186 |     const today = await ins(t2, t);
+      187 |     const res = await request(app).get('/api/goals').set('Cookie', aCookie);
+    > 188 |     const byId = Object.fromEntries(res.body.goals.map((g) => [g.id, g.status]));
+          |                                                    ^
+      189 |     expect(byId[past.rows[0].id]).toBe('ended');
+      190 |     expect(byId[today.rows[0].id]).toBe('active');
+      191 |   });
+
+      at Object.map (tests/goals.test.js:188:52)
+
+  ● TEST-F04-08 — ต้อง login (NFR-01) › TEST-F04-08: post /api/goals → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      195 |   test.each([['post', '/api/goals'], ['get', '/api/goals'], ['get', '/api/goals/1']])('TEST-F04-08: %s %s → 401', async (m, p) => {
+      196 |     const res = await request(app)[m](p);
+    > 197 |     expect(res.status).toBe(401);
+          |                        ^
+      198 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      199 |   });
+      200 | });
+
+      at toBe (tests/goals.test.js:197:24)
+
+  ● TEST-F04-08 — ต้อง login (NFR-01) › TEST-F04-08: get /api/goals → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      195 |   test.each([['post', '/api/goals'], ['get', '/api/goals'], ['get', '/api/goals/1']])('TEST-F04-08: %s %s → 401', async (m, p) => {
+      196 |     const res = await request(app)[m](p);
+    > 197 |     expect(res.status).toBe(401);
+          |                        ^
+      198 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      199 |   });
+      200 | });
+
+      at toBe (tests/goals.test.js:197:24)
+
+  ● TEST-F04-08 — ต้อง login (NFR-01) › TEST-F04-08: get /api/goals/1 → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      195 |   test.each([['post', '/api/goals'], ['get', '/api/goals'], ['get', '/api/goals/1']])('TEST-F04-08: %s %s → 401', async (m, p) => {
+      196 |     const res = await request(app)[m](p);
+    > 197 |     expect(res.status).toBe(401);
+          |                        ^
+      198 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      199 |   });
+      200 | });
+
+      at toBe (tests/goals.test.js:197:24)
+
+FAIL tests/templates.test.js
+  TEST-F03-01 — PM สร้างแม่แบบ (AC-F03-01)
+    ✕ TEST-F03-01: 201, unit=minutes, บันทึกใน DB ด้วย created_by = PM (1 ms)
+  TEST-F03-02 — Participant สร้างไม่ได้ (AC-F03-02, BR-07)
+    ✕ TEST-F03-02: 403 และไม่มีแถวใหม่ (1 ms)
+  TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09)
+    ✕ TEST-F03-03a: min_value=0 → 400 พร้อม fields (1 ms)
+    ✕ TEST-F03-03a: min_value=961 → 400 พร้อม fields
+    ✕ TEST-F03-03a: max_value=961 → 400; min=1,max=960 → 201 (1 ms)
+    ✕ TEST-F03-03b: max < min → 400 (1 ms)
+    ✕ TEST-F03-03b: ทศนิยม → 400 (1 ms)
+    ✕ TEST-F03-03b: เป็น string → 400
+    ✕ TEST-F03-03b: ขาด min_value → 400 (1 ms)
+    ✕ TEST-F03-03b: ขาด max_value → 400 (1 ms)
+    ✕ TEST-F03-03c: ชื่อไม่ถูกต้อง (0) → 400
+    ✕ TEST-F03-03c: ชื่อไม่ถูกต้อง (1) → 400
+    ✕ TEST-F03-03c: ชื่อไม่ถูกต้อง (2) → 400
+    ✕ TEST-F03-03c: ชื่อ 100 ตัวอักษร → 201; unit=hours → 400 (1 ms)
+  TEST-F03-04/05 — รายการแม่แบบ (AC-F03-04, AC-F03-05)
+    ✕ TEST-F03-04: PM เห็นเฉพาะของตน (2 ms)
+    ✕ TEST-F03-05: Participant เห็นเฉพาะที่ไม่ archived (1 ms)
+  TEST-F03-06 — ต้อง login (NFR-01)
+    ✕ TEST-F03-06: post /api/templates ไม่มี cookie → 401 (1 ms)
+    ✕ TEST-F03-06: get /api/templates ไม่มี cookie → 401
+
+  ● TEST-F03-01 — PM สร้างแม่แบบ (AC-F03-01) › TEST-F03-01: 201, unit=minutes, บันทึกใน DB ด้วย created_by = PM
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 404
+
+      34 |   test('TEST-F03-01: 201, unit=minutes, บันทึกใน DB ด้วย created_by = PM', async () => {
+      35 |     const res = await post(pm1Cookie, valid());
+    > 36 |     expect(res.status).toBe(201);
+         |                        ^
+      37 |     expect(res.body.template).toMatchObject({ name: 'Reading', unit: 'minutes', min_value: 10, max_value: 120, is_archived: false });
+      38 |     expect(res.body.template).not.toHaveProperty('created_by');
+      39 |     const { rows } = await pool.query('SELECT created_by FROM activity_templates WHERE id = $1', [res.body.template.id]);
+
+      at Object.toBe (tests/templates.test.js:36:24)
+
+  ● TEST-F03-02 — Participant สร้างไม่ได้ (AC-F03-02, BR-07) › TEST-F03-02: 403 และไม่มีแถวใหม่
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      46 |     const before = await count();
+      47 |     const res = await post(partCookie, valid());
+    > 48 |     expect(res.status).toBe(403);
+         |                        ^
+      49 |     expect(res.body).toEqual({ error: 'Forbidden' });
+      50 |     expect(await count()).toBe(before);
+      51 |   });
+
+      at Object.toBe (tests/templates.test.js:48:24)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03a: min_value=0 → 400 พร้อม fields
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      56 |     const before = await count();
+      57 |     const res = await post(pm1Cookie, valid({ min_value: v, max_value: 960 }));
+    > 58 |     expect(res.status).toBe(400);
+         |                        ^
+      59 |     expect(res.body.error).toBe('Bad Request');
+      60 |     expect(res.body.fields).toHaveProperty('min_value');
+      61 |     expect(await count()).toBe(before);
+
+      at toBe (tests/templates.test.js:58:24)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03a: min_value=961 → 400 พร้อม fields
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      56 |     const before = await count();
+      57 |     const res = await post(pm1Cookie, valid({ min_value: v, max_value: 960 }));
+    > 58 |     expect(res.status).toBe(400);
+         |                        ^
+      59 |     expect(res.body.error).toBe('Bad Request');
+      60 |     expect(res.body.fields).toHaveProperty('min_value');
+      61 |     expect(await count()).toBe(before);
+
+      at toBe (tests/templates.test.js:58:24)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03a: max_value=961 → 400; min=1,max=960 → 201
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      62 |   });
+      63 |   test('TEST-F03-03a: max_value=961 → 400; min=1,max=960 → 201', async () => {
+    > 64 |     expect((await post(pm1Cookie, valid({ min_value: 1, max_value: 961 }))).status).toBe(400);
+         |                                                                                     ^
+      65 |     expect((await post(pm1Cookie, valid({ min_value: 1, max_value: 960 }))).status).toBe(201);
+      66 |   });
+      67 |   test.each([
+
+      at Object.toBe (tests/templates.test.js:64:85)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03b: max < min → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      72 |     ['ขาด max_value', { max_value: undefined }],
+      73 |   ])('TEST-F03-03b: %s → 400', async (_n, over) => {
+    > 74 |     expect((await post(pm1Cookie, valid(over))).status).toBe(400);
+         |                                                         ^
+      75 |   });
+      76 |   test.each([[''], ['   '], ['x'.repeat(101)]])('TEST-F03-03c: ชื่อไม่ถูกต้อง (%#) → 400', async (name) => {
+      77 |     expect((await post(pm1Cookie, valid({ name }))).status).toBe(400);
+
+      at toBe (tests/templates.test.js:74:57)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03b: ทศนิยม → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      72 |     ['ขาด max_value', { max_value: undefined }],
+      73 |   ])('TEST-F03-03b: %s → 400', async (_n, over) => {
+    > 74 |     expect((await post(pm1Cookie, valid(over))).status).toBe(400);
+         |                                                         ^
+      75 |   });
+      76 |   test.each([[''], ['   '], ['x'.repeat(101)]])('TEST-F03-03c: ชื่อไม่ถูกต้อง (%#) → 400', async (name) => {
+      77 |     expect((await post(pm1Cookie, valid({ name }))).status).toBe(400);
+
+      at toBe (tests/templates.test.js:74:57)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03b: เป็น string → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      72 |     ['ขาด max_value', { max_value: undefined }],
+      73 |   ])('TEST-F03-03b: %s → 400', async (_n, over) => {
+    > 74 |     expect((await post(pm1Cookie, valid(over))).status).toBe(400);
+         |                                                         ^
+      75 |   });
+      76 |   test.each([[''], ['   '], ['x'.repeat(101)]])('TEST-F03-03c: ชื่อไม่ถูกต้อง (%#) → 400', async (name) => {
+      77 |     expect((await post(pm1Cookie, valid({ name }))).status).toBe(400);
+
+      at toBe (tests/templates.test.js:74:57)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03b: ขาด min_value → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      72 |     ['ขาด max_value', { max_value: undefined }],
+      73 |   ])('TEST-F03-03b: %s → 400', async (_n, over) => {
+    > 74 |     expect((await post(pm1Cookie, valid(over))).status).toBe(400);
+         |                                                         ^
+      75 |   });
+      76 |   test.each([[''], ['   '], ['x'.repeat(101)]])('TEST-F03-03c: ชื่อไม่ถูกต้อง (%#) → 400', async (name) => {
+      77 |     expect((await post(pm1Cookie, valid({ name }))).status).toBe(400);
+
+      at toBe (tests/templates.test.js:74:57)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03b: ขาด max_value → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      72 |     ['ขาด max_value', { max_value: undefined }],
+      73 |   ])('TEST-F03-03b: %s → 400', async (_n, over) => {
+    > 74 |     expect((await post(pm1Cookie, valid(over))).status).toBe(400);
+         |                                                         ^
+      75 |   });
+      76 |   test.each([[''], ['   '], ['x'.repeat(101)]])('TEST-F03-03c: ชื่อไม่ถูกต้อง (%#) → 400', async (name) => {
+      77 |     expect((await post(pm1Cookie, valid({ name }))).status).toBe(400);
+
+      at toBe (tests/templates.test.js:74:57)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03c: ชื่อไม่ถูกต้อง (0) → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      75 |   });
+      76 |   test.each([[''], ['   '], ['x'.repeat(101)]])('TEST-F03-03c: ชื่อไม่ถูกต้อง (%#) → 400', async (name) => {
+    > 77 |     expect((await post(pm1Cookie, valid({ name }))).status).toBe(400);
+         |                                                             ^
+      78 |   });
+      79 |   test('TEST-F03-03c: ชื่อ 100 ตัวอักษร → 201; unit=hours → 400', async () => {
+      80 |     expect((await post(pm1Cookie, valid({ name: 'x'.repeat(100) }))).status).toBe(201);
+
+      at toBe (tests/templates.test.js:77:61)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03c: ชื่อไม่ถูกต้อง (1) → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      75 |   });
+      76 |   test.each([[''], ['   '], ['x'.repeat(101)]])('TEST-F03-03c: ชื่อไม่ถูกต้อง (%#) → 400', async (name) => {
+    > 77 |     expect((await post(pm1Cookie, valid({ name }))).status).toBe(400);
+         |                                                             ^
+      78 |   });
+      79 |   test('TEST-F03-03c: ชื่อ 100 ตัวอักษร → 201; unit=hours → 400', async () => {
+      80 |     expect((await post(pm1Cookie, valid({ name: 'x'.repeat(100) }))).status).toBe(201);
+
+      at toBe (tests/templates.test.js:77:61)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03c: ชื่อไม่ถูกต้อง (2) → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      75 |   });
+      76 |   test.each([[''], ['   '], ['x'.repeat(101)]])('TEST-F03-03c: ชื่อไม่ถูกต้อง (%#) → 400', async (name) => {
+    > 77 |     expect((await post(pm1Cookie, valid({ name }))).status).toBe(400);
+         |                                                             ^
+      78 |   });
+      79 |   test('TEST-F03-03c: ชื่อ 100 ตัวอักษร → 201; unit=hours → 400', async () => {
+      80 |     expect((await post(pm1Cookie, valid({ name: 'x'.repeat(100) }))).status).toBe(201);
+
+      at toBe (tests/templates.test.js:77:61)
+
+  ● TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09) › TEST-F03-03c: ชื่อ 100 ตัวอักษร → 201; unit=hours → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 201
+    Received: 404
+
+      78 |   });
+      79 |   test('TEST-F03-03c: ชื่อ 100 ตัวอักษร → 201; unit=hours → 400', async () => {
+    > 80 |     expect((await post(pm1Cookie, valid({ name: 'x'.repeat(100) }))).status).toBe(201);
+         |                                                                              ^
+      81 |     const res = await post(pm1Cookie, valid({ unit: 'hours' }));
+      82 |     expect(res.status).toBe(400);
+      83 |     expect(res.body.fields).toHaveProperty('unit');
+
+      at Object.toBe (tests/templates.test.js:80:78)
+
+  ● TEST-F03-04/05 — รายการแม่แบบ (AC-F03-04, AC-F03-05) › TEST-F03-04: PM เห็นเฉพาะของตน
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      90 |     const r1 = await request(app).get('/api/templates').set('Cookie', pm1Cookie);
+      91 |     const r2 = await request(app).get('/api/templates').set('Cookie', pm2Cookie);
+    > 92 |     expect(r1.status).toBe(200);
+         |                       ^
+      93 |     expect(r1.body.templates.map((t) => t.name)).not.toContain('PM2-only');
+      94 |     expect(r2.body.templates.map((t) => t.name)).toEqual(['PM2-only']);
+      95 |   });
+
+      at Object.toBe (tests/templates.test.js:92:23)
+
+  ● TEST-F03-04/05 — รายการแม่แบบ (AC-F03-04, AC-F03-05) › TEST-F03-05: Participant เห็นเฉพาะที่ไม่ archived
+
+    TypeError: Cannot read properties of undefined (reading 'id')
+
+       97 |     const a = await post(pm1Cookie, valid({ name: 'Visible-tpl' }));
+       98 |     const b = await post(pm1Cookie, valid({ name: 'Archived-tpl' }));
+    >  99 |     await pool.query('UPDATE activity_templates SET is_archived = true WHERE id = $1', [b.body.template.id]);
+          |                                                                                                         ^
+      100 |     const res = await request(app).get('/api/templates').set('Cookie', partCookie);
+      101 |     expect(res.status).toBe(200);
+      102 |     const names = res.body.templates.map((t) => t.name);
+
+      at Object.id (tests/templates.test.js:99:105)
+
+  ● TEST-F03-06 — ต้อง login (NFR-01) › TEST-F03-06: post /api/templates ไม่มี cookie → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      110 |   test.each([['post', '/api/templates'], ['get', '/api/templates']])('TEST-F03-06: %s %s ไม่มี cookie → 401', async (m, p) => {
+      111 |     const res = await request(app)[m](p);
+    > 112 |     expect(res.status).toBe(401);
+          |                        ^
+      113 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      114 |   });
+      115 | });
+
+      at toBe (tests/templates.test.js:112:24)
+
+  ● TEST-F03-06 — ต้อง login (NFR-01) › TEST-F03-06: get /api/templates ไม่มี cookie → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      110 |   test.each([['post', '/api/templates'], ['get', '/api/templates']])('TEST-F03-06: %s %s ไม่มี cookie → 401', async (m, p) => {
+      111 |     const res = await request(app)[m](p);
+    > 112 |     expect(res.status).toBe(401);
+          |                        ^
+      113 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      114 |   });
+      115 | });
+
+      at toBe (tests/templates.test.js:112:24)
+
+FAIL tests/rbac.test.js
+  TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01)
+    ✓ TEST-F02-01a: get /api/auth/me ไม่มี cookie → 401 Unauthorized (2 ms)
+    ✓ TEST-F02-01a: post /api/auth/logout ไม่มี cookie → 401 Unauthorized
+    ✓ TEST-F02-01a: get /__test/pm-only ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01a: get /__test/participant-only ไม่มี cookie → 401 Unauthorized
+    ✓ TEST-F02-01a: get /__test/items/1 ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✕ TEST-F02-01a: post /api/templates ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01a: get /api/templates ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01a: post /api/goals ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01a: get /api/goals ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01a: get /api/goals/1 ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01b: get /api/auth/me cookie ปลอม → 401 (1 ms)
+    ✓ TEST-F02-01b: post /api/auth/logout cookie ปลอม → 401
+    ✓ TEST-F02-01b: get /__test/pm-only cookie ปลอม → 401
+    ✓ TEST-F02-01b: get /__test/participant-only cookie ปลอม → 401
+    ✓ TEST-F02-01b: get /__test/items/1 cookie ปลอม → 401
+    ✕ TEST-F02-01b: post /api/templates cookie ปลอม → 401 (1 ms)
+    ✕ TEST-F02-01b: get /api/templates cookie ปลอม → 401
+    ✕ TEST-F02-01b: post /api/goals cookie ปลอม → 401 (1 ms)
+    ✕ TEST-F02-01b: get /api/goals cookie ปลอม → 401
+    ✕ TEST-F02-01b: get /api/goals/1 cookie ปลอม → 401
+  TEST-F02-02 — บังคับ role (AC-F02-02, BR-07/BR-08)
+    ✓ TEST-F02-02a: Participant เรียก endpoint เฉพาะ PM → 403 (3 ms)
+    ✓ TEST-F02-02b: PM เรียก endpoint เฉพาะ Participant → 403 (2 ms)
+    ✓ TEST-F02-02c: PM เรียก endpoint ของ PM → 200 (1 ms)
+  TEST-F02-03 — ความเป็นเจ้าของข้อมูล (AC-F02-03, BR-08)
+    ✓ TEST-F02-03a: เจ้าของทรัพยากร (Participant A) → 200 (1 ms)
+    ✓ TEST-F02-03b: Participant คนอื่น (B) → 404 ไม่ยืนยันว่าข้อมูลมีอยู่ (2 ms)
+    ✓ TEST-F02-03c: PM อ่านทรัพยากรของ Participant → 403 (1 ms)
+  TEST-F02-04 — error ที่ปลอดภัย (AC-F02-04, NFR-06)
+    ✓ TEST-F02-04a: error ที่ไม่คาดคิด → 500 ข้อความกลาง ไม่มี SQL/stack/message ภายใน (1 ms)
+    ✓ TEST-F02-04b: JSON พัง → 400 ข้อความคงที่ ไม่มีข้อความ parse ของ library (1 ms)
+    ✓ TEST-F02-04c: route ที่ไม่มีอยู่ → 404 JSON ข้อความคงที่
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: post /api/templates ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      84 |     const res = await request(app)[method](path);
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 |
+
+      at toBe (tests/rbac.test.js:86:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: get /api/templates ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      84 |     const res = await request(app)[method](path);
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 |
+
+      at toBe (tests/rbac.test.js:86:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: post /api/goals ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      84 |     const res = await request(app)[method](path);
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 |
+
+      at toBe (tests/rbac.test.js:86:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: get /api/goals ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      84 |     const res = await request(app)[method](path);
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 |
+
+      at toBe (tests/rbac.test.js:86:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: get /api/goals/1 ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      84 |     const res = await request(app)[method](path);
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 |
+
+      at toBe (tests/rbac.test.js:86:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: post /api/templates cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      91 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      92 |
+    > 93 |     expect(res.status).toBe(401);
+         |                        ^
+      94 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      95 |   });
+      96 | });
+
+      at toBe (tests/rbac.test.js:93:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: get /api/templates cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      91 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      92 |
+    > 93 |     expect(res.status).toBe(401);
+         |                        ^
+      94 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      95 |   });
+      96 | });
+
+      at toBe (tests/rbac.test.js:93:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: post /api/goals cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      91 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      92 |
+    > 93 |     expect(res.status).toBe(401);
+         |                        ^
+      94 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      95 |   });
+      96 | });
+
+      at toBe (tests/rbac.test.js:93:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: get /api/goals cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      91 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      92 |
+    > 93 |     expect(res.status).toBe(401);
+         |                        ^
+      94 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      95 |   });
+      96 | });
+
+      at toBe (tests/rbac.test.js:93:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: get /api/goals/1 cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      91 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      92 |
+    > 93 |     expect(res.status).toBe(401);
+         |                        ^
+      94 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      95 |   });
+      96 | });
+
+      at toBe (tests/rbac.test.js:93:24)
+
+FAIL tests/validate.test.js
+  TEST-F03-U1 — validateTemplate (S-2, S-3, S-1)
+    ✕ ข้อมูลถูกต้อง → ok
+    ✕ min_value=0 → ไม่ผ่าน (1 ms)
+    ✕ min_value=961 → ไม่ผ่าน
+    ✕ min_value=-1 → ไม่ผ่าน
+    ✕ min_value=10.5 → ไม่ผ่าน
+    ✕ min_value="10" → ไม่ผ่าน
+    ✕ min_value=null → ไม่ผ่าน
+    ✕ min_value=undefined → ไม่ผ่าน
+    ✕ ขอบเขต 1 และ 960 ผ่าน
+    ✕ max < min → ไม่ผ่านที่ max_value
+    ✕ name="" → ไม่ผ่าน
+    ✕ name="   " → ไม่ผ่าน
+    ✕ name="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" → ไม่ผ่าน
+    ✕ name=5 → ไม่ผ่าน
+    ✕ name=undefined → ไม่ผ่าน
+    ✕ name 100 ตัวอักษรผ่าน
+    ✕ unit ที่ไม่ใช่ minutes ไม่ผ่าน; minutes ผ่าน
+  TEST-F03-U1 — validateGoal (S-5)
+    ✕ ข้อมูลถูกต้อง → ok
+    ✕ target_minutes=0 → ไม่ผ่าน
+    ✕ target_minutes=-5 → ไม่ผ่าน
+    ✕ target_minutes=1.5 → ไม่ผ่าน
+    ✕ target_minutes="100" → ไม่ผ่าน
+    ✕ target_minutes=null → ไม่ผ่าน
+    ✕ target_minutes=undefined → ไม่ผ่าน
+    ✕ target_minutes = 1 ผ่าน
+    ✕ end_date="2026-02-30" → ไม่ผ่าน
+    ✕ end_date="x" → ไม่ผ่าน
+    ✕ end_date="2026-1-5" → ไม่ผ่าน
+    ✕ end_date=undefined → ไม่ผ่าน
+    ✕ end_date=20261120 → ไม่ผ่าน
+    ✕ end ก่อน start → ไม่ผ่าน; end = start ผ่าน
+    ✕ start ก่อนวันนี้ → ไม่ผ่าน; start = วันนี้ ผ่าน
+    ✕ ระยะ 365 วันผ่าน 366 วันไม่ผ่าน (นับรวมปลาย)
+  TEST-F03-U1 — dates (S-11)
+    ✕ daysInclusive นับรวมวันปลายทั้งสอง
+    ✕ isValidDate
+    ✕ todayBangkok: 17:00Z ของวันก่อนหน้าคือเที่ยงคืน Bangkok (วันถัดไป)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › ข้อมูลถูกต้อง → ok
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at Object.validateTemplate (tests/validate.test.js:14:43)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › min_value=0 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:16:15)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › min_value=961 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:16:15)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › min_value=-1 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:16:15)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › min_value=10.5 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:16:15)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › min_value="10" → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:16:15)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › min_value=null → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:16:15)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › min_value=undefined → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:16:15)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › ขอบเขต 1 และ 960 ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at Object.validateTemplate (tests/validate.test.js:21:12)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › max < min → ไม่ผ่านที่ max_value
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at Object.validateTemplate (tests/validate.test.js:24:12)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › name="" → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:27:12)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › name="   " → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:27:12)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › name="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:27:12)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › name=5 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:27:12)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › name=undefined → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at validateTemplate (tests/validate.test.js:27:12)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › name 100 ตัวอักษรผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at Object.validateTemplate (tests/validate.test.js:30:12)
+
+  ● TEST-F03-U1 — validateTemplate (S-2, S-3, S-1) › unit ที่ไม่ใช่ minutes ไม่ผ่าน; minutes ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:8:37)
+      at Object.validateTemplate (tests/validate.test.js:33:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › ข้อมูลถูกต้อง → ok
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at Object.validateGoal (tests/validate.test.js:39:43)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › target_minutes=0 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:41:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › target_minutes=-5 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:41:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › target_minutes=1.5 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:41:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › target_minutes="100" → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:41:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › target_minutes=null → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:41:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › target_minutes=undefined → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:41:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › target_minutes = 1 ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at Object.validateGoal (tests/validate.test.js:44:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › end_date="2026-02-30" → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:47:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › end_date="x" → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:47:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › end_date="2026-1-5" → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:47:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › end_date=undefined → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:47:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › end_date=20261120 → ไม่ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at validateGoal (tests/validate.test.js:47:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › end ก่อน start → ไม่ผ่าน; end = start ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at Object.validateGoal (tests/validate.test.js:50:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › start ก่อนวันนี้ → ไม่ผ่าน; start = วันนี้ ผ่าน
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at Object.validateGoal (tests/validate.test.js:54:12)
+
+  ● TEST-F03-U1 — validateGoal (S-5) › ระยะ 365 วันผ่าน 366 วันไม่ผ่าน (นับรวมปลาย)
+
+    not implemented
+
+      4 |  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } }
+      5 |  */
+    > 6 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      7 |
+      8 | const validateTemplate = (_body) => notImplemented();
+      9 | const validateGoal = (_body, _today) => notImplemented();
+
+      at notImplemented (src/lib/validate.js:6:35)
+      at notImplemented (src/lib/validate.js:9:41)
+      at Object.validateGoal (tests/validate.test.js:58:12)
+
+  ● TEST-F03-U1 — dates (S-11) › daysInclusive นับรวมวันปลายทั้งสอง
+
+    not implemented
+
+      3 |  * STUB: ยังไม่ implement (TDD red) — จะเขียนจริงหลังบันทึกผลเทสต์ที่ fail
+      4 |  */
+    > 5 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      6 |
+      7 | /** @returns {string} วันนี้เป็น YYYY-MM-DD ตามเขตเวลา Asia/Bangkok */
+      8 | const todayBangkok = (_now) => notImplemented();
+
+      at notImplemented (src/lib/dates.js:5:35)
+      at notImplemented (src/lib/dates.js:12:41)
+      at Object.daysInclusive (tests/validate.test.js:65:12)
+
+  ● TEST-F03-U1 — dates (S-11) › isValidDate
+
+    not implemented
+
+      3 |  * STUB: ยังไม่ implement (TDD red) — จะเขียนจริงหลังบันทึกผลเทสต์ที่ fail
+      4 |  */
+    > 5 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      6 |
+      7 | /** @returns {string} วันนี้เป็น YYYY-MM-DD ตามเขตเวลา Asia/Bangkok */
+      8 | const todayBangkok = (_now) => notImplemented();
+
+      at notImplemented (src/lib/dates.js:5:35)
+      at notImplemented (src/lib/dates.js:10:29)
+      at Object.isValidDate (tests/validate.test.js:69:12)
+
+  ● TEST-F03-U1 — dates (S-11) › todayBangkok: 17:00Z ของวันก่อนหน้าคือเที่ยงคืน Bangkok (วันถัดไป)
+
+    not implemented
+
+      3 |  * STUB: ยังไม่ implement (TDD red) — จะเขียนจริงหลังบันทึกผลเทสต์ที่ fail
+      4 |  */
+    > 5 | function notImplemented() { throw new Error('not implemented'); }
+        |                                   ^
+      6 |
+      7 | /** @returns {string} วันนี้เป็น YYYY-MM-DD ตามเขตเวลา Asia/Bangkok */
+      8 | const todayBangkok = (_now) => notImplemented();
+
+      at notImplemented (src/lib/dates.js:5:35)
+      at notImplemented (src/lib/dates.js:8:32)
+      at Object.todayBangkok (tests/validate.test.js:76:12)
+
+PASS tests/auth.test.js
+  TEST-F01-01 — login สำเร็จ (AC-F01-01)
+    ✓ TEST-F01-01: ข้อมูลถูกต้อง → 200 ได้ {id, username, role} + cookie HttpOnly (4 ms)
+  TEST-F01-02 — login ล้มเหลว (AC-F01-02)
+    ✓ TEST-F01-02a: รหัสผ่านผิด → 401 ข้อความทั่วไป (2 ms)
+    ✓ TEST-F01-02b: ไม่มี username นี้ → 401 และ body เหมือน 02a ทุกตัวอักษร (42 ms)
+    ✓ TEST-F01-02c: ไม่ส่ง password → 400
+    ✓ TEST-F01-02c: password ว่าง → 400 (1 ms)
+    ✓ TEST-F01-02c: password เป็นตัวเลข → 400
+    ✓ TEST-F01-02c: ไม่ส่ง username → 400 (1 ms)
+  TEST-F01-03 — ผู้ใช้ปัจจุบัน (AC-F01-03)
+    ✓ TEST-F01-03: GET /me ด้วย session ที่ถูกต้อง → 200 ตรงกับผู้ใช้ที่ login (2 ms)
+  TEST-F01-04 — logout (AC-F01-04)
+    ✓ TEST-F01-04a: logout → 204 แล้วใช้ cookie เดิมเรียก /me ได้ 401 (3 ms)
+    ✓ TEST-F01-04b: logout แล้วแถวของ session ถูกลบจากตาราง session (2 ms)
+  TEST-F01-05 — อายุ session (AC-F01-05, NFR-03)
+    ✓ TEST-F01-05a: session ที่ expire เลยเวลาแล้ว → 401 (2 ms)
+    ✓ TEST-F01-05b: cookie ที่ออกตอน login มีอายุ 8 ชม. (28800 วินาที ±5) (2 ms)
+  TEST-F01-06 — เก็บรหัสผ่านเป็น hash (AC-F01-06, NFR-02)
+    ✓ TEST-F01-06: password_hash ของผู้ใช้จาก seed ไม่ใช่รหัสผ่านจริง และเป็น bcrypt (162 ms)
+  TEST-F01-07 — session id ใหม่ทุกครั้งที่ login (AC-F01-07)
+    ✓ TEST-F01-07: login ซ้ำขณะถือ cookie เดิม → ได้ cookie/sid ใหม่ที่ต่างจากเดิม (4 ms)
+
+PASS tests/persistence.test.js
+  TEST-F07-01 — NFR-04 data persistence across restart
+    ✓ TEST-F07-01: row written to DB persists after full pool shutdown and reconnect (9 ms)
+  TEST-F07-02 — NFR-05 / BR-01 unique constraint (goal_id, entry_date)
+    ✓ TEST-F07-02a: initial habit entry insert succeeds (3 ms)
+    ✓ TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code 23505 (2 ms)
+    ✓ TEST-F07-02c: different entry dates on the same goal both succeed (2 ms)
+  TEST-F07-03 — Seed data idempotency (AC-F07-03)
+    ✓ TEST-F07-03: running seed logic twice does not duplicate records (247 ms)
+  TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07, AC-F07-04)
+    ✓ TEST-F07-04a: minutes = 0 is rejected by DB check constraint with code 23514 (2 ms)
+    ✓ TEST-F07-04b: minutes = 1 (minimum allowed) is accepted (1 ms)
+    ✓ TEST-F07-04c: minutes = 960 (platform ceiling) is accepted (2 ms)
+    ✓ TEST-F07-04d: minutes = 961 (above platform ceiling) is rejected with code 23514 (1 ms)
+  TEST-F07-05 — goals active status constraint (BR-05, AC-F07-05)
+    ✓ TEST-F07-05a: multiple ended goals for the same user and template are allowed (2 ms)
+    ✓ TEST-F07-05b: second active goal on the same template is rejected with code 23505 (2 ms)
+
+Test Suites: 4 failed, 2 passed, 6 total
+Tests:       90 failed, 46 passed, 136 total
+Snapshots:   0 total
+Time:        1.238 s, estimated 2 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

@@ -32,6 +32,11 @@ const PROTECTED_ENDPOINTS = [
   ['get', '/__test/pm-only'],
   ['get', '/__test/participant-only'],
   ['get', '/__test/items/1'],
+  ['post', '/api/templates'],
+  ['get', '/api/templates'],
+  ['post', '/api/goals'],
+  ['get', '/api/goals'],
+  ['get', '/api/goals/1'],
 ];
 
 let app;
