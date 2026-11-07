@@ -25,10 +25,13 @@ model: Sonnet5.5 , effort: medium
 
 ## Atiwit Thongngoen 67070501048, GitHub: atiwit
 
-
+model: Claude 3.7 Sonnet / Claude 3.5 Sonnet / Gemini 2.5 Flash, เครื่องมือ: Antigravity (Coding Assistant)
 
 | เครื่องมือ | งานที่ AI ช่วย | สิ่งที่ตรวจ/แก้ก่อนรับ |
 |---|---|---|
-| (ชื่อเครื่องมือ) | (เช่น Issue/PR ที่ช่วย และช่วยทำอะไร) | (เช่น รันเทสต์เอง แก้อะไรก่อนรับ) |
+| Antigravity (Claude Sonnet 3.5) | Issue #1 / PR #5: วางโครงฐานข้อมูล Initial schema, Migration script, Docker/PostgreSQL config, และ Seed data (F-07, F-08) | ตรวจสอบ SQL constraint (`uq_habit_entries_goal_date`, `uq_goals_active`), ตรวจ type parser และทดสอบรัน seed ให้ idempotent |
+| Antigravity (Claude Sonnet / Gemini) | Issue #4 / PR #10: Contract, เทสต์ TDD, โค้ด Backend และหลักฐาน red/green ของ F-05 (บันทึกรายวัน) และ F-06 (ความคืบหน้าและประวัติ) | ตรวจสอบการแปลง PostgreSQL error 23505 เป็น HTTP 409, ตรวจสูตรคำนวณเปอร์เซ็นต์ capped 100%, ตรวจการนับวันย้อนหลัง 7 วันเทียบ `todayBangkok()`, รันเทสต์ 171/171 ผ่านจริงก่อน commit |
+| Antigravity (Claude Sonnet / Gemini) | Issue #6 / PR #11: Contract, โครงสร้าง React + Vite SPA, API Client กลาง, AuthContext, ProtectedRoute, และหน้าจอครบ Journey (Templates, Goals, Entries, Progress) | ตรวจสอบการไม่เก็บ Token ใน LocalStorage (ใช้ HTTP-only session cookie), แก้ไขแยก 401 ออกจาก network error, ตัดฟิลด์ email ที่ไม่มีจริงออก, แก้ Bug redirect ข้าม role (TEST-UI-09), รัน Vitest 12/12 ผ่านครบ |
+| Antigravity (แชท) | อัปเดต Traceability Matrix, ตรวจสอบ Definition of Done ของ Sprint 1, และร่างเอกสารคำประกาศการใช้ AI | ตรวจสอบความสอดคล้องระหว่าง Git commit hash กับเลข AC/TEST ในเอกสารจริงทุกจุด |
 
 
