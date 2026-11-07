@@ -53,7 +53,7 @@
 ```bash
 # 1. Clone repository
 git clone https://github.com/Alongkron1234/study-habit-tracker.git
-cd <โฟลเดอร์ที่ clone>/study-habit-tracker/backend
+cd study-habit-tracker/backend
 
 # 2. ติดตั้ง dependency
 npm install
