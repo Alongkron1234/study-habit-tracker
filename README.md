@@ -88,13 +88,13 @@ npm run dev
 
 ### ลอง login (F-01)
 
-หลัง `npm run seed` แล้ว ลอง login ด้วยบัญชีใน "บัญชีทดสอบ" ด้านล่าง (รหัสผ่านรับจากช่องทางส่วนตัวของวิชา ไม่ใส่ใน Git):
+หลัง `npm run seed` แล้ว ลอง login ด้วยบัญชีใน "บัญชีทดสอบ" ด้านล่าง (รหัสผ่านสังเคราะห์ของ seed อยู่ในตารางด้านล่าง):
 
 ```bash
 # login แล้วเก็บ cookie ไว้ในไฟล์ cookies.txt
 curl -i -c cookies.txt -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"participant_bob","password":"<รหัสผ่านของบัญชีนี้>"}'
+  -d '{"username":"participant_bob","password":"Demo@Bob123"}'
 
 # ดูผู้ใช้ปัจจุบัน
 curl -b cookies.txt http://localhost:3000/api/auth/me
@@ -125,14 +125,13 @@ cd ../frontend && npm install && npm test
 
 ### บัญชีทดสอบ (ข้อมูลสังเคราะห์)
 
-บัญชีด้านล่างสร้างโดย seed script **เพื่อใช้ demo/test เท่านั้น** ห้ามใช้ในระบบจริง
-รหัสผ่าน plaintext ส่งผ่านช่องทางส่วนตัวของวิชา (ห้ามใส่ใน Git — NFR-08)
+บัญชีด้านล่างสร้างโดย seed script **เพื่อใช้ demo/test บนเครื่องตัวเองเท่านั้น** รหัสผ่านเป็นค่าสังเคราะห์ที่เปิดเผยได้ (ไม่ใช่รหัสจริงของใคร และไม่ใช้ในระบบจริง) เก็บในฐานข้อมูลเป็น bcrypt hash เท่านั้น
 
-| Username | Role | หมายเหตุ |
-|---|---|---|
-| `pm_alice` | Program Manager | สร้างแม่แบบกิจกรรม |
-| `participant_bob` | Participant | มีเป้าหมายและ entry ตัวอย่างย้อนหลัง 3 วัน |
-| `participant_carol` | Participant | มีเป้าหมายและ entry ตัวอย่างย้อนหลัง 3 วัน (ทดสอบ isolation) |
+| Username | Role | รหัสผ่าน (สังเคราะห์) | หมายเหตุ |
+|---|---|---|---|
+| `pm_alice` | Program Manager | `Demo@Alice1` | สร้างแม่แบบกิจกรรม |
+| `participant_bob` | Participant | `Demo@Bob123` | มีเป้าหมายและ entry ตัวอย่างย้อนหลัง 3 วัน |
+| `participant_carol` | Participant | `Demo@Carol1` | มีเป้าหมายและ entry ตัวอย่างย้อนหลัง 3 วัน (ทดสอบ isolation) |
 
 ## ขั้นตอนการ release
 
