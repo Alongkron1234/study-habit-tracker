@@ -475,3 +475,21 @@ body {
     gap: 0.5rem;
   }
 }
+
+/* Date inputs must not overflow their card on narrow screens */
+.form-row > .form-group {
+  min-width: 0;
+}
+
+.form-group input[type='date'] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+}
