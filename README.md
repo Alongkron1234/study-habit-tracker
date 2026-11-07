@@ -13,7 +13,7 @@
 | Feature inventory + traceability | ร่างแล้ว |
 | แผน 3 sprint | ร่างแล้ว |
 | System-Level SDS | ร่างครบ v0.1 (ส่วนที่ยังเป็นแผนระบุไว้ในเอกสาร) |
-| Sprint 1 |  กำลังดำเนินการ: F-07, F-08, F-01, F-02 merge เข้า `sprint-1-staging` แล้ว; F-03–F-06 และ UI-01 อยู่ระหว่างทำ |
+| Sprint 1 | พร้อมส่ง: F-07, F-08, F-01, F-02, F-03, F-04, F-05, F-06 และ UI-01 merge ครบถ้วน |
 
 ## เอกสาร
 
@@ -70,12 +70,18 @@ npm run migrate
 # 6. ใส่ข้อมูลตัวอย่าง (seed)
 npm run seed
 
-# 7. รันแอป (development mode)
+# 7. รันแอป Backend (development mode)
 npm run dev
 
 # 8. ทดสอบว่าแอปทำงาน
 curl http://localhost:3000/health
 # ควรได้: {"status":"ok","db":"connected"}
+
+# 9. ติดตั้งและรัน Frontend (Vite React SPA)
+cd ../frontend
+npm install
+npm run dev
+# เปิดเบราว์เซอร์ที่ http://localhost:5173 (จะ proxy /api ไปยัง backend port 3000)
 ```
 
 ### ลอง login (F-01)
@@ -107,7 +113,11 @@ cp .env.test.example .env.test
 DATABASE_URL=<TEST_DATABASE_URL> npm run migrate
 
 # 3. รันเทสต์ทั้งหมด
-npm test
+# Backend (Jest)
+cd backend && npm test
+
+# Frontend (Vitest)
+cd ../frontend && npm test
 ```
 
 ### บัญชีทดสอบ (ข้อมูลสังเคราะห์)

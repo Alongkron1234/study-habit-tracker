@@ -113,13 +113,14 @@ frontend/
 
 ## 5. Definition of Done (DoD)
 
-- [ ] contract นี้ถูก commit ก่อนเขียนโค้ด frontend
-- [ ] โครงสร้างโปรเจกต์ `frontend/` ติดตั้งและรัน `npm run build` ผ่าน
-- [ ] มี automated tests (Vitest) ครอบคลุม AC-UI-01 ถึง AC-UI-06 ทั้งหมด
-- [ ] รันเทสต์ frontend ผ่าน 100% พร้อมบันทึกหลักฐาน
-- [ ] อัปเดต `README.md` เพิ่มคำแนะนำการติดตั้งและรัน Frontend
-- [ ] อัปเดต `docs/traceability.md` บันทึกความครอบคลุมของ UI
-- [ ] ตรวจสอบความปลอดภัย: ไม่เก็บ token ใน LocalStorage (ใช้ HTTP-only session cookie ผ่าน proxy), ไม่รั่วไหลข้อมูลสิทธิ์, จัดการ error ปลอดภัย
+- [x] contract นี้ถูก commit ก่อนเขียนโค้ด frontend — `633ca78`
+- [x] โครงสร้างโปรเจกต์ `frontend/` ติดตั้งและรัน `npm run build` ผ่าน
+- [x] มี automated tests (Vitest) ครอบคลุม AC-UI-01 ถึง AC-UI-06 ทั้งหมด
+- [x] รันเทสต์ frontend ผ่าน 100% พร้อมบันทึกหลักฐาน — โค้ด `0cc7e3e`, ผลรัน `evidence/UI-01-green-run.txt` (9/9 passed)
+- [x] อัปเดต `README.md` เพิ่มคำแนะนำการติดตั้งและรัน Frontend
+- [x] อัปเดต `docs/traceability.md` บันทึกความครอบคลุมของ UI
+- [x] ตรวจสอบความปลอดภัย: ไม่เก็บ token ใน LocalStorage (ใช้ HTTP-only session cookie ผ่าน proxy), ไม่รั่วไหลข้อมูลสิทธิ์, จัดการ error ปลอดภัย
+- [ ] PR เข้า `sprint-1-staging` ผ่าน review จาก @Alongkron1234
 
 ---
 
