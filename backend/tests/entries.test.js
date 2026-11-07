@@ -391,3 +391,4 @@ describe('TEST-F06-03 — RBAC สำหรับ GET progress/entries (AC-F06-0
     expect(r2.body).toEqual({ error: 'Not Found' });
   });
 });
+

@@ -1,4 +1,13 @@
 ﻿
+# RED run — F-05/F-06 (tests written before implementation)
+commit: 1fd8142edec63d6d3e9a96b65c39d8ee2fbe329e
+date:   2026-11-07T11:08:49Z
+command: cd backend && npm test -- --forceExit
+
+อธิบาย: route /api/goals/:id/entries และ /api/goals/:id/progress ยังไม่ถูก implement/mount (ได้ 404 แทน 201/400/401/403/409)
+suite เดิมทั้งหมด (auth, rbac, templates, goals, persistence, validate) ยังผ่าน = ไม่มี regression; 33 fail มาจากฟีเจอร์ F-05/F-06 ที่เขียนเทสต์ไว้ล่วงหน้า
+
+
 > study-habit-tracker-backend@0.1.0 test
 > jest --forceExit --runInBand --forceExit
 
