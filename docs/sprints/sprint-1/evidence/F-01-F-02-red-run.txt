@@ -1,0 +1,574 @@
+# RED run — F-01/F-02 (tests written before implementation)
+commit: acb62a560e65b7a75a3228d142e3937883cd43b5
+date:   2026-11-06T16:39:02Z
+command: cd backend && npm test
+
+
+> study-habit-tracker-backend@0.1.0 test
+> jest --forceExit --runInBand
+
+FAIL tests/auth.test.js
+  TEST-F01-01 — login สำเร็จ (AC-F01-01)
+    ✕ TEST-F01-01: ข้อมูลถูกต้อง → 200 ได้ {id, username, role} + cookie HttpOnly (12 ms)
+  TEST-F01-02 — login ล้มเหลว (AC-F01-02)
+    ✕ TEST-F01-02a: รหัสผ่านผิด → 401 ข้อความทั่วไป (1 ms)
+    ✕ TEST-F01-02b: ไม่มี username นี้ → 401 และ body เหมือน 02a ทุกตัวอักษร (1 ms)
+    ✕ TEST-F01-02c: ไม่ส่ง password → 400 (1 ms)
+    ✕ TEST-F01-02c: password ว่าง → 400
+    ✕ TEST-F01-02c: password เป็นตัวเลข → 400 (1 ms)
+    ✕ TEST-F01-02c: ไม่ส่ง username → 400 (1 ms)
+  TEST-F01-03 — ผู้ใช้ปัจจุบัน (AC-F01-03)
+    ✕ TEST-F01-03: GET /me ด้วย session ที่ถูกต้อง → 200 ตรงกับผู้ใช้ที่ login
+  TEST-F01-04 — logout (AC-F01-04)
+    ✕ TEST-F01-04a: logout → 204 แล้วใช้ cookie เดิมเรียก /me ได้ 401
+    ✕ TEST-F01-04b: logout แล้วแถวของ session ถูกลบจากตาราง session
+  TEST-F01-05 — อายุ session (AC-F01-05, NFR-03)
+    ✕ TEST-F01-05a: session ที่ expire เลยเวลาแล้ว → 401 (1 ms)
+    ✕ TEST-F01-05b: cookie ที่ออกตอน login มีอายุ 8 ชม. (28800 วินาที ±5)
+  TEST-F01-06 — เก็บรหัสผ่านเป็น hash (AC-F01-06, NFR-02)
+    ✓ TEST-F01-06: password_hash ของผู้ใช้จาก seed ไม่ใช่รหัสผ่านจริง และเป็น bcrypt (165 ms)
+  TEST-F01-07 — session id ใหม่ทุกครั้งที่ login (AC-F01-07)
+    ✕ TEST-F01-07: login ซ้ำขณะถือ cookie เดิม → ได้ cookie/sid ใหม่ที่ต่างจากเดิม (1 ms)
+
+  ● TEST-F01-01 — login สำเร็จ (AC-F01-01) › TEST-F01-01: ข้อมูลถูกต้อง → 200 ได้ {id, username, role} + cookie HttpOnly
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      65 |     const res = await login();
+      66 |
+    > 67 |     expect(res.status).toBe(200);
+         |                        ^
+      68 |     expect(Object.keys(res.body)).toEqual(['user']);
+      69 |     expect(Object.keys(res.body.user).sort()).toEqual(['id', 'role', 'username']);
+      70 |     expect(res.body.user.username).toBe(PARTICIPANT);
+
+
+  ● TEST-F01-02 — login ล้มเหลว (AC-F01-02) › TEST-F01-02a: รหัสผ่านผิด → 401 ข้อความทั่วไป
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      79 |     const res = await login(PARTICIPANT, 'wrong-password');
+      80 |
+    > 81 |     expect(res.status).toBe(401);
+         |                        ^
+      82 |     expect(res.body).toEqual({ error: 'Invalid username or password' });
+      83 |   });
+      84 |
+
+
+  ● TEST-F01-02 — login ล้มเหลว (AC-F01-02) › TEST-F01-02b: ไม่มี username นี้ → 401 และ body เหมือน 02a ทุกตัวอักษร
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      87 |     const unknownUser = await login('test_auth_nobody', PASSWORD);
+      88 |
+    > 89 |     expect(unknownUser.status).toBe(401);
+         |                                ^
+      90 |     expect(unknownUser.text).toBe(wrongPassword.text);
+      91 |   });
+      92 |
+
+
+  ● TEST-F01-02 — login ล้มเหลว (AC-F01-02) › TEST-F01-02c: ไม่ส่ง password → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+       99 |     const res = await request(app).post('/api/auth/login').send(body);
+      100 |
+    > 101 |     expect(res.status).toBe(400);
+          |                        ^
+      102 |     expect(res.body).toEqual({ error: 'Bad Request' });
+      103 |   });
+      104 | });
+
+
+  ● TEST-F01-02 — login ล้มเหลว (AC-F01-02) › TEST-F01-02c: password ว่าง → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+       99 |     const res = await request(app).post('/api/auth/login').send(body);
+      100 |
+    > 101 |     expect(res.status).toBe(400);
+          |                        ^
+      102 |     expect(res.body).toEqual({ error: 'Bad Request' });
+      103 |   });
+      104 | });
+
+
+  ● TEST-F01-02 — login ล้มเหลว (AC-F01-02) › TEST-F01-02c: password เป็นตัวเลข → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+       99 |     const res = await request(app).post('/api/auth/login').send(body);
+      100 |
+    > 101 |     expect(res.status).toBe(400);
+          |                        ^
+      102 |     expect(res.body).toEqual({ error: 'Bad Request' });
+      103 |   });
+      104 | });
+
+
+  ● TEST-F01-02 — login ล้มเหลว (AC-F01-02) › TEST-F01-02c: ไม่ส่ง username → 400
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+       99 |     const res = await request(app).post('/api/auth/login').send(body);
+      100 |
+    > 101 |     expect(res.status).toBe(400);
+          |                        ^
+      102 |     expect(res.body).toEqual({ error: 'Bad Request' });
+      103 |   });
+      104 | });
+
+
+  ● TEST-F01-03 — ผู้ใช้ปัจจุบัน (AC-F01-03) › TEST-F01-03: GET /me ด้วย session ที่ถูกต้อง → 200 ตรงกับผู้ใช้ที่ login
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      54 | function setCookieOf(res) {
+      55 |   const raw = (res.headers['set-cookie'] || [])[0];
+    > 56 |   expect(raw).toBeDefined();
+         |               ^
+      57 |   return raw;
+      58 | }
+      59 | const cookieOf = (res) => setCookieOf(res).split(';')[0]; // "connect.sid=s%3A<sid>.<sig>"
+
+
+  ● TEST-F01-04 — logout (AC-F01-04) › TEST-F01-04a: logout → 204 แล้วใช้ cookie เดิมเรียก /me ได้ 401
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      54 | function setCookieOf(res) {
+      55 |   const raw = (res.headers['set-cookie'] || [])[0];
+    > 56 |   expect(raw).toBeDefined();
+         |               ^
+      57 |   return raw;
+      58 | }
+      59 | const cookieOf = (res) => setCookieOf(res).split(';')[0]; // "connect.sid=s%3A<sid>.<sig>"
+
+
+  ● TEST-F01-04 — logout (AC-F01-04) › TEST-F01-04b: logout แล้วแถวของ session ถูกลบจากตาราง session
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      54 | function setCookieOf(res) {
+      55 |   const raw = (res.headers['set-cookie'] || [])[0];
+    > 56 |   expect(raw).toBeDefined();
+         |               ^
+      57 |   return raw;
+      58 | }
+      59 | const cookieOf = (res) => setCookieOf(res).split(';')[0]; // "connect.sid=s%3A<sid>.<sig>"
+
+
+  ● TEST-F01-05 — อายุ session (AC-F01-05, NFR-03) › TEST-F01-05a: session ที่ expire เลยเวลาแล้ว → 401
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      54 | function setCookieOf(res) {
+      55 |   const raw = (res.headers['set-cookie'] || [])[0];
+    > 56 |   expect(raw).toBeDefined();
+         |               ^
+      57 |   return raw;
+      58 | }
+      59 | const cookieOf = (res) => setCookieOf(res).split(';')[0]; // "connect.sid=s%3A<sid>.<sig>"
+
+
+  ● TEST-F01-05 — อายุ session (AC-F01-05, NFR-03) › TEST-F01-05b: cookie ที่ออกตอน login มีอายุ 8 ชม. (28800 วินาที ±5)
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      54 | function setCookieOf(res) {
+      55 |   const raw = (res.headers['set-cookie'] || [])[0];
+    > 56 |   expect(raw).toBeDefined();
+         |               ^
+      57 |   return raw;
+      58 | }
+      59 | const cookieOf = (res) => setCookieOf(res).split(';')[0]; // "connect.sid=s%3A<sid>.<sig>"
+
+
+  ● TEST-F01-07 — session id ใหม่ทุกครั้งที่ login (AC-F01-07) › TEST-F01-07: login ซ้ำขณะถือ cookie เดิม → ได้ cookie/sid ใหม่ที่ต่างจากเดิม
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      54 | function setCookieOf(res) {
+      55 |   const raw = (res.headers['set-cookie'] || [])[0];
+    > 56 |   expect(raw).toBeDefined();
+         |               ^
+      57 |   return raw;
+      58 | }
+      59 | const cookieOf = (res) => setCookieOf(res).split(';')[0]; // "connect.sid=s%3A<sid>.<sig>"
+
+
+    [server error] SyntaxError: Unexpected end of JSON input
+      expose: true,
+      statusCode: 400,
+      status: 400,
+      body: '{"username": ',
+      type: 'entity.parse.failed'
+    }
+
+      65 |
+      66 |     // Log ข้อผิดพลาดจริงฝั่งเซิร์ฟเวอร์เท่านั้น
+         |             ^
+      68 |
+      69 |     // NFR-06: หากเป็น 500 หรือ server error ให้ตอบข้อความกลางๆ เสมอ เพื่อไม่เปิดเผยข้อมูลภายใน
+      70 |     if (status >= 500) {
+
+
+FAIL tests/rbac.test.js
+  TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01)
+    ✕ TEST-F02-01a: get /api/auth/me ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✕ TEST-F02-01a: post /api/auth/logout ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01a: get /__test/pm-only ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✕ TEST-F02-01a: get /__test/participant-only ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✕ TEST-F02-01a: get /__test/items/1 ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✕ TEST-F02-01b: get /api/auth/me cookie ปลอม → 401
+    ✕ TEST-F02-01b: post /api/auth/logout cookie ปลอม → 401
+    ✕ TEST-F02-01b: get /__test/pm-only cookie ปลอม → 401 (1 ms)
+    ✕ TEST-F02-01b: get /__test/participant-only cookie ปลอม → 401
+    ✕ TEST-F02-01b: get /__test/items/1 cookie ปลอม → 401 (1 ms)
+  TEST-F02-02 — บังคับ role (AC-F02-02, BR-07/BR-08)
+    ✕ TEST-F02-02a: Participant เรียก endpoint เฉพาะ PM → 403 (4 ms)
+    ✕ TEST-F02-02b: PM เรียก endpoint เฉพาะ Participant → 403 (2 ms)
+    ✓ TEST-F02-02c: PM เรียก endpoint ของ PM → 200 (1 ms)
+  TEST-F02-03 — ความเป็นเจ้าของข้อมูล (AC-F02-03, BR-08)
+    ✓ TEST-F02-03a: เจ้าของทรัพยากร (Participant A) → 200 (2 ms)
+    ✕ TEST-F02-03b: Participant คนอื่น (B) → 404 ไม่ยืนยันว่าข้อมูลมีอยู่ (1 ms)
+    ✕ TEST-F02-03c: PM อ่านทรัพยากรของ Participant → 403 (1 ms)
+  TEST-F02-04 — error ที่ปลอดภัย (AC-F02-04, NFR-06)
+    ✓ TEST-F02-04a: error ที่ไม่คาดคิด → 500 ข้อความกลาง ไม่มี SQL/stack/message ภายใน (1 ms)
+    ✕ TEST-F02-04b: JSON พัง → 400 ข้อความคงที่ ไม่มีข้อความ parse ของ library (5 ms)
+    ✕ TEST-F02-04c: route ที่ไม่มีอยู่ → 404 JSON ข้อความคงที่
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: get /api/auth/me ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      77 |     const res = await request(app)[method](path);
+      78 |
+    > 79 |     expect(res.status).toBe(401);
+         |                        ^
+      80 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      81 |   });
+      82 |
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: post /api/auth/logout ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      77 |     const res = await request(app)[method](path);
+      78 |
+    > 79 |     expect(res.status).toBe(401);
+         |                        ^
+      80 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      81 |   });
+      82 |
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: get /__test/pm-only ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 200
+
+      77 |     const res = await request(app)[method](path);
+      78 |
+    > 79 |     expect(res.status).toBe(401);
+         |                        ^
+      80 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      81 |   });
+      82 |
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: get /__test/participant-only ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 200
+
+      77 |     const res = await request(app)[method](path);
+      78 |
+    > 79 |     expect(res.status).toBe(401);
+         |                        ^
+      80 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      81 |   });
+      82 |
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: get /__test/items/1 ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 200
+
+      77 |     const res = await request(app)[method](path);
+      78 |
+    > 79 |     expect(res.status).toBe(401);
+         |                        ^
+      80 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      81 |   });
+      82 |
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: get /api/auth/me cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      84 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 | });
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: post /api/auth/logout cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      84 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 | });
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: get /__test/pm-only cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 200
+
+      84 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 | });
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: get /__test/participant-only cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 200
+
+      84 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 | });
+
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: get /__test/items/1 cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 200
+
+      84 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+      85 |
+    > 86 |     expect(res.status).toBe(401);
+         |                        ^
+      87 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      88 |   });
+      89 | });
+
+
+  ● TEST-F02-02 — บังคับ role (AC-F02-02, BR-07/BR-08) › TEST-F02-02a: Participant เรียก endpoint เฉพาะ PM → 403
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 200
+
+      94 |     const res = await request(app).get('/__test/pm-only').set('Cookie', await cookieFor(PARTICIPANT_A));
+      95 |
+    > 96 |     expect(res.status).toBe(403);
+         |                        ^
+      97 |     expect(res.body).toEqual({ error: 'Forbidden' });
+      98 |   });
+      99 |
+
+
+  ● TEST-F02-02 — บังคับ role (AC-F02-02, BR-07/BR-08) › TEST-F02-02b: PM เรียก endpoint เฉพาะ Participant → 403
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 200
+
+      101 |     const res = await request(app).get('/__test/participant-only').set('Cookie', await cookieFor(PM));
+      102 |
+    > 103 |     expect(res.status).toBe(403);
+          |                        ^
+      104 |     expect(res.body).toEqual({ error: 'Forbidden' });
+      105 |   });
+      106 |
+
+
+  ● TEST-F02-03 — ความเป็นเจ้าของข้อมูล (AC-F02-03, BR-08) › TEST-F02-03b: Participant คนอื่น (B) → 404 ไม่ยืนยันว่าข้อมูลมีอยู่
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 404
+    Received: 200
+
+      124 |     const res = await request(app).get('/__test/items/1').set('Cookie', await cookieFor(PARTICIPANT_B));
+      125 |
+    > 126 |     expect(res.status).toBe(404);
+          |                        ^
+      127 |     expect(res.body).toEqual({ error: 'Not Found' });
+      128 |   });
+      129 |
+
+
+  ● TEST-F02-03 — ความเป็นเจ้าของข้อมูล (AC-F02-03, BR-08) › TEST-F02-03c: PM อ่านทรัพยากรของ Participant → 403
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 200
+
+      131 |     const res = await request(app).get('/__test/items/1').set('Cookie', await cookieFor(PM));
+      132 |
+    > 133 |     expect(res.status).toBe(403);
+          |                        ^
+      134 |     expect(res.body).toEqual({ error: 'Forbidden' });
+      135 |   });
+      136 | });
+
+
+  ● TEST-F02-04 — error ที่ปลอดภัย (AC-F02-04, NFR-06) › TEST-F02-04b: JSON พัง → 400 ข้อความคงที่ ไม่มีข้อความ parse ของ library
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "error": "Bad Request",
+    +   "error": "Unexpected end of JSON input",
+      }
+
+      155 |
+      156 |     expect(res.status).toBe(400);
+    > 157 |     expect(res.body).toEqual({ error: 'Bad Request' });
+          |                      ^
+      158 |   });
+      159 |
+      160 |   test('TEST-F02-04c: route ที่ไม่มีอยู่ → 404 JSON ข้อความคงที่', async () => {
+
+
+  ● TEST-F02-04 — error ที่ปลอดภัย (AC-F02-04, NFR-06) › TEST-F02-04c: route ที่ไม่มีอยู่ → 404 JSON ข้อความคงที่
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 3
+    + Received  + 1
+
+    - Object {
+    -   "error": "Not Found",
+    - }
+    + Object {}
+
+      162 |
+      163 |     expect(res.status).toBe(404);
+    > 164 |     expect(res.body).toEqual({ error: 'Not Found' });
+          |                      ^
+      165 |   });
+      166 | });
+      167 |
+
+
+PASS tests/persistence.test.js
+  TEST-F07-01 — NFR-04 data persistence across restart
+    ✓ TEST-F07-01: row written to DB persists after full pool shutdown and reconnect (6 ms)
+  TEST-F07-02 — NFR-05 / BR-01 unique constraint (goal_id, entry_date)
+    ✓ TEST-F07-02a: initial habit entry insert succeeds (2 ms)
+    ✓ TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code 23505 (3 ms)
+    ✓ TEST-F07-02c: different entry dates on the same goal both succeed (2 ms)
+  TEST-F07-03 — Seed data idempotency (AC-F07-03)
+    ✓ TEST-F07-03: running seed logic twice does not duplicate records (248 ms)
+  TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07, AC-F07-04)
+    ✓ TEST-F07-04a: minutes = 0 is rejected by DB check constraint with code 23514 (2 ms)
+    ✓ TEST-F07-04b: minutes = 1 (minimum allowed) is accepted (2 ms)
+    ✓ TEST-F07-04c: minutes = 960 (platform ceiling) is accepted (2 ms)
+    ✓ TEST-F07-04d: minutes = 961 (above platform ceiling) is rejected with code 23514 (1 ms)
+  TEST-F07-05 — goals active status constraint (BR-05, AC-F07-05)
+    ✓ TEST-F07-05a: multiple ended goals for the same user and template are allowed (2 ms)
+    ✓ TEST-F07-05b: second active goal on the same template is rejected with code 23505 (2 ms)
+
+Test Suites: 2 failed, 1 passed, 3 total
+Tests:       29 failed, 15 passed, 44 total
+Snapshots:   0 total
+Time:        0.911 s, estimated 1 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+---
+## หมายเหตุผู้บันทึก (ไม่ได้มาจาก Jest)
+ผลรวม: เทสต์ใหม่ 33 ข้อ ล้มเหลว 29 ผ่าน 4 (เทสต์ F-07 เดิม 11 ข้อผ่านตามเดิม)
+4 ข้อที่ผ่านใน red phase เพราะพฤติกรรมเดิมหรือ stub ไม่ใช่เพราะ feature เสร็จ:
+- TEST-F01-06: seed.js เก็บ bcrypt hash อยู่แล้ว (characterization test ของพฤติกรรมเดิม)
+- TEST-F02-04a: error handler เดิมตอบ 500 ข้อความกลางอยู่แล้ว (characterization test)
+- TEST-F02-02c และ TEST-F02-03a: ผ่านเพราะ stub ปล่อยทุก request จะมีความหมายเมื่อเคสปฏิเสธ (02a/02b/03b/03c) ถูกบังคับแล้ว
+ที่เหลือล้มที่ assertion (404 แทน 200/401, ไม่ใช่ล้มเพราะหาไฟล์ไม่เจอ)

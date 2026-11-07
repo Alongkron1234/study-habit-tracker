@@ -1,0 +1,257 @@
+﻿
+# GREEN run — F-05/F-06
+commit: 537095028b019059d05269d4f778444d7eae0136
+date:   2026-11-07T11:10:48Z
+command: cd backend && npm test -- --forceExit
+
+อธิบาย: ทุกฟีเจอร์ F-05 และ F-06 ถูก implement ครบถ้วนตาม contract, ทุก test suite ผ่านหมด (171/171 passed)
+
+
+> study-habit-tracker-backend@0.1.0 test
+> jest --forceExit --runInBand --forceExit
+
+node.exe : (node:17820) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors 
+that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:17820) [D...ulnerabilities.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)
+PASS tests/entries.test.js
+  TEST-F05-01 — บันทึก entry สำเร็จ (AC-F05-01)
+    √ TEST-F05-01: 201, response มี id/entry_date/minutes ไม่มี goal_id/user_id/created_at/updated_at; แถวอยู่ใน DB 
+(45 ms)
+  TEST-F05-02 — ซ้ำวัน + concurrent (AC-F05-02, BR-01, NFR-05)
+    √ TEST-F05-02a: บันทึกซ้ำวันเดียวกัน → 409 Conflict; DB ยังมี 1 แถว (83 ms)
+    √ TEST-F05-02b: ส่ง 5 request พร้อมกัน → สำเร็จ 1 (201), ที่เหลือ 409; ไม่มี 500; DB มี 1 แถว (201 ms)
+  TEST-F05-03 — validation minutes (AC-F05-03, BR-02)
+    √ TEST-F05-03a: minutes = ทศนิยม → 400 มี fields.minutes (21 ms)
+    √ TEST-F05-03a: minutes = string → 400 มี fields.minutes (9 ms)
+    √ TEST-F05-03a: minutes = null → 400 มี fields.minutes (10 ms)
+    √ TEST-F05-03a: minutes = ไม่ส่ง → 400 มี fields.minutes (8 ms)
+    √ TEST-F05-03a: minutes = ติดลบ → 400 มี fields.minutes (13 ms)
+    √ TEST-F05-03a: minutes = ศูนย์ → 400 มี fields.minutes (9 ms)
+    √ TEST-F05-03b: minutes นอกช่วง template (min=10,max=120): 9 → 400, 121 → 400, 10 → 201, 120 → 201 (32 ms)
+  TEST-F05-04 — validation entry_date (AC-F05-04, BR-03)
+    √ TEST-F05-04a: entry_date = พรุ่งนี้ (อนาคต) → 400 fields.entry_date (9 ms)
+    √ TEST-F05-04b: entry_date = วันนี้ − 8 วัน (เกิน 7 วัน) → 400 fields.entry_date (8 ms)
+    √ TEST-F05-04c: entry_date ก่อน start_date ของ goal → 400 fields.entry_date (11 ms)
+    √ TEST-F05-04d: entry_date รูปแบบผิด/วันที่ไม่มีจริง → 400 fields.entry_date (20 ms)
+    √ TEST-F05-04e: entry_date = วันนี้ (ขอบ) → 201 (10 ms)
+    √ TEST-F05-04f: entry_date = วันนี้ − 7 วัน (ขอบล่าง 7 วัน) และอยู่ใน goal period → 201 (11 ms)
+  TEST-F05-05 — goal ended (AC-F05-05, BR-05)
+    √ TEST-F05-05a: goal ที่ end_date เมื่อวาน → 409 Conflict (13 ms)
+    √ TEST-F05-05b: goal ที่ end_date = วันนี้ → 201 (ยังถือเป็น active) (12 ms)
+  TEST-F05-06 — RBAC สำหรับ POST entries (AC-F05-06, BR-08)
+    √ TEST-F05-06a: PM เรียก POST entries → 403 (11 ms)
+    √ TEST-F05-06b: Participant B เรียก POST entries ใต้ goal ของ A → 404 (13 ms)
+  TEST-F05-07 — ไม่มี session → 401 (NFR-01)
+    √ TEST-F05-07a: POST /api/goals/1/entries ไม่มี cookie → 401 (9 ms)
+    √ TEST-F05-07b: GET /api/goals/1/progress ไม่มี cookie → 401 (7 ms)
+    √ TEST-F05-07c: GET /api/goals/1/entries ไม่มี cookie → 401 (6 ms)
+  TEST-F06-01 — progress calculation (AC-F06-01, BR-06)
+    √ TEST-F06-01a: 2 entries รวม 150 min, target 200 → percent 75.0 (14 ms)
+    √ TEST-F06-01b: total_minutes > target → percent = 100.0 (capped), total_minutes = ค่าจริง (11 ms)
+    √ TEST-F06-01c: ไม่มี entry → total_minutes = 0, percent = 0.0 (10 ms)
+  TEST-F06-02 — entry history (AC-F06-02, FR-10)
+    √ TEST-F06-02: 3 entries เรียง entry_date DESC; ไม่มี goal_id/user_id/created_at/updated_at (18 ms)
+  TEST-F06-03 — RBAC สำหรับ GET progress/entries (AC-F06-03, BR-08)
+    √ TEST-F06-03a: PM เรียก GET progress และ GET entries → 403 ทั้งคู่ (14 ms)
+    √ TEST-F06-03b: Participant B เรียก endpoint ของ goal A → 404 ทั้งคู่ (14 ms)
+
+PASS tests/goals.test.js
+  TEST-F04-01 — สร้างเป้าหมาย (AC-F04-01)
+    √ TEST-F04-01: 201, active, เจ้าของ = ผู้ใช้, ไม่มี user_id ใน response (12 ms)
+  TEST-F04-02 — validation (AC-F04-02, BR-04)
+    √ TEST-F04-02a: target_minutes=0 → 400 (7 ms)
+    √ TEST-F04-02a: target_minutes=-5 → 400 (8 ms)
+    √ TEST-F04-02a: target_minutes=1.5 → 400 (10 ms)
+    √ TEST-F04-02a: target_minutes="100" → 400 (8 ms)
+    √ TEST-F04-02a: target_minutes=1 → 201 (8 ms)
+    √ TEST-F04-02b: end_date="2026-02-30" → 400 (6 ms)
+    √ TEST-F04-02b: end_date="x" → 400 (7 ms)
+    √ TEST-F04-02b: end_date=undefined → 400 (6 ms)
+    √ TEST-F04-02b: start_date ผิดรูปแบบ → 400 (8 ms)
+    √ TEST-F04-02c: end ก่อน start → 400; end = start → 201 (14 ms)
+    √ TEST-F04-02d: start เมื่อวาน → 400; start วันนี้ → 201 (16 ms)
+    √ TEST-F04-02e: 366 วัน → 400; 365 วัน (นับรวมปลาย) → 201 (16 ms)
+  TEST-F04-03 — 1 active ต่อแม่แบบ (AC-F04-03, BR-05)
+    √ TEST-F04-03a: ซ้ำในแม่แบบเดียวกัน → 409 และจำนวนไม่เพิ่ม (84 ms)
+    √ TEST-F04-03b: คนละแม่แบบ → 201 (25 ms)
+    √ TEST-F04-03c: 5 คำขอพร้อมกัน → สำเร็จ 1 ที่เหลือ 409 ไม่มี 500 (184 ms)
+    √ TEST-F04-03d: goal เก่าที่ end_date ผ่านแล้ว (status ยัง active) ไม่ขวาง และถูกปรับเป็น ended (19 ms)
+    √ TEST-F04-03e: คนละผู้ใช้สร้างในแม่แบบเดียวกันได้ (18 ms)
+  TEST-F04-04 — แม่แบบไม่ถูกต้อง (AC-F04-04)
+    √ TEST-F04-04: template_id=999999 → 404 (8 ms)
+    √ TEST-F04-04: template_id="archived" → 404 (7 ms)
+    √ TEST-F04-04: template_id ไม่ใช่ตัวเลข → 400 (12 ms)
+  TEST-F04-05 — PM ถูกปฏิเสธ (AC-F04-05, BR-08)
+    √ TEST-F04-05: PM POST/GET /goals → 403 (14 ms)
+  TEST-F04-06 — ความเป็นเจ้าของ (AC-F04-06, BR-08)
+    √ TEST-F04-06a: รายการเห็นเฉพาะของตน (21 ms)
+    √ TEST-F04-06b: GET /goals/:id เจ้าของ 200 / คนอื่น 404 / PM 403 / id ไม่ใช่เลข 404 (30 ms)
+  TEST-F04-07 — สถานะคำนวณจากวันที่ (AC-F04-07, BR-05)
+    √ TEST-F04-07: end เมื่อวาน → ended; end วันนี้ → active (8 ms)
+  TEST-F04-08 — ต้อง login (NFR-01)
+    √ TEST-F04-08: post /api/goals → 401 (5 ms)
+    √ TEST-F04-08: get /api/goals → 401 (4 ms)
+    √ TEST-F04-08: get /api/goals/1 → 401 (5 ms)
+
+PASS tests/auth.test.js
+  TEST-F01-01 — login สำเร็จ (AC-F01-01)
+    √ TEST-F01-01: ข้อมูลถูกต้อง → 200 ได้ {id, username, role} + cookie HttpOnly (21 ms)
+  TEST-F01-02 — login ล้มเหลว (AC-F01-02)
+    √ TEST-F01-02a: รหัสผ่านผิด → 401 ข้อความทั่วไป (5 ms)
+    √ TEST-F01-02b: ไม่มี username นี้ → 401 และ body เหมือน 02a ทุกตัวอักษร (70 ms)
+    √ TEST-F01-02c: ไม่ส่ง password → 400 (3 ms)
+    √ TEST-F01-02c: password ว่าง → 400 (4 ms)
+    √ TEST-F01-02c: password เป็นตัวเลข → 400 (5 ms)
+    √ TEST-F01-02c: ไม่ส่ง username → 400 (6 ms)
+  TEST-F01-03 — ผู้ใช้ปัจจุบัน (AC-F01-03)
+    √ TEST-F01-03: GET /me ด้วย session ที่ถูกต้อง → 200 ตรงกับผู้ใช้ที่ login (13 ms)
+  TEST-F01-04 — logout (AC-F01-04)
+    √ TEST-F01-04a: logout → 204 แล้วใช้ cookie เดิมเรียก /me ได้ 401 (15 ms)
+    √ TEST-F01-04b: logout แล้วแถวของ session ถูกลบจากตาราง session (13 ms)
+  TEST-F01-05 — อายุ session (AC-F01-05, NFR-03)
+    √ TEST-F01-05a: session ที่ expire เลยเวลาแล้ว → 401 (13 ms)
+    √ TEST-F01-05b: cookie ที่ออกตอน login มีอายุ 8 ชม. (28800 วินาที ±5) (7 ms)
+  TEST-F01-06 — เก็บรหัสผ่านเป็น hash (AC-F01-06, NFR-02)
+    √ TEST-F01-06: password_hash ของผู้ใช้จาก seed ไม่ใช่รหัสผ่านจริง และเป็น bcrypt (258 ms)
+  TEST-F01-07 — session id ใหม่ทุกครั้งที่ login (AC-F01-07)
+    √ TEST-F01-07: login ซ้ำขณะถือ cookie เดิม → ได้ cookie/sid ใหม่ที่ต่างจากเดิม (20 ms)
+
+PASS tests/persistence.test.js
+  TEST-F07-01 — NFR-04 data persistence across restart
+    √ TEST-F07-01: row written to DB persists after full pool shutdown and reconnect (187 ms)
+  TEST-F07-02 — NFR-05 / BR-01 unique constraint (goal_id, entry_date)
+    √ TEST-F07-02a: initial habit entry insert succeeds (13 ms)
+    √ TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code 23505 (11 ms)
+    √ TEST-F07-02c: different entry dates on the same goal both succeed (10 ms)
+  TEST-F07-03 — Seed data idempotency (AC-F07-03)
+    √ TEST-F07-03: running seed logic twice does not duplicate records (454 ms)
+  TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07, AC-F07-04)
+    √ TEST-F07-04a: minutes = 0 is rejected by DB check constraint with code 23514 (9 ms)
+    √ TEST-F07-04b: minutes = 1 (minimum allowed) is accepted (8 ms)
+    √ TEST-F07-04c: minutes = 960 (platform ceiling) is accepted (9 ms)
+    √ TEST-F07-04d: minutes = 961 (above platform ceiling) is rejected with code 23514 (7 ms)
+  TEST-F07-05 — goals active status constraint (BR-05, AC-F07-05)
+    √ TEST-F07-05a: multiple ended goals for the same user and template are allowed (7 ms)
+    √ TEST-F07-05b: second active goal on the same template is rejected with code 23505 (8 ms)
+
+PASS tests/rbac.test.js
+  TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01)
+    √ TEST-F02-01a: get /api/auth/me ไม่มี cookie → 401 Unauthorized (6 ms)
+    √ TEST-F02-01a: post /api/auth/logout ไม่มี cookie → 401 Unauthorized (5 ms)
+    √ TEST-F02-01a: get /__test/pm-only ไม่มี cookie → 401 Unauthorized (4 ms)
+    √ TEST-F02-01a: get /__test/participant-only ไม่มี cookie → 401 Unauthorized (3 ms)
+    √ TEST-F02-01a: get /__test/items/1 ไม่มี cookie → 401 Unauthorized (4 ms)
+    √ TEST-F02-01a: post /api/templates ไม่มี cookie → 401 Unauthorized (3 ms)
+    √ TEST-F02-01a: get /api/templates ไม่มี cookie → 401 Unauthorized (4 ms)
+    √ TEST-F02-01a: post /api/goals ไม่มี cookie → 401 Unauthorized (3 ms)
+    √ TEST-F02-01a: get /api/goals ไม่มี cookie → 401 Unauthorized (4 ms)
+    √ TEST-F02-01a: get /api/goals/1 ไม่มี cookie → 401 Unauthorized (3 ms)
+    √ TEST-F02-01a: post /api/goals/1/entries ไม่มี cookie → 401 Unauthorized (3 ms)
+    √ TEST-F02-01a: get /api/goals/1/progress ไม่มี cookie → 401 Unauthorized (4 ms)
+    √ TEST-F02-01a: get /api/goals/1/entries ไม่มี cookie → 401 Unauthorized (6 ms)
+    √ TEST-F02-01b: get /api/auth/me cookie ปลอม → 401 (4 ms)
+    √ TEST-F02-01b: post /api/auth/logout cookie ปลอม → 401 (5 ms)
+    √ TEST-F02-01b: get /__test/pm-only cookie ปลอม → 401 (4 ms)
+    √ TEST-F02-01b: get /__test/participant-only cookie ปลอม → 401 (4 ms)
+    √ TEST-F02-01b: get /__test/items/1 cookie ปลอม → 401 (4 ms)
+    √ TEST-F02-01b: post /api/templates cookie ปลอม → 401 (5 ms)
+    √ TEST-F02-01b: get /api/templates cookie ปลอม → 401 (3 ms)
+    √ TEST-F02-01b: post /api/goals cookie ปลอม → 401 (4 ms)
+    √ TEST-F02-01b: get /api/goals cookie ปลอม → 401 (4 ms)
+    √ TEST-F02-01b: get /api/goals/1 cookie ปลอม → 401 (4 ms)
+    √ TEST-F02-01b: post /api/goals/1/entries cookie ปลอม → 401 (4 ms)
+    √ TEST-F02-01b: get /api/goals/1/progress cookie ปลอม → 401 (3 ms)
+    √ TEST-F02-01b: get /api/goals/1/entries cookie ปลอม → 401 (3 ms)
+  TEST-F02-02 — บังคับ role (AC-F02-02, BR-07/BR-08)
+    √ TEST-F02-02a: Participant เรียก endpoint เฉพาะ PM → 403 (24 ms)
+    √ TEST-F02-02b: PM เรียก endpoint เฉพาะ Participant → 403 (10 ms)
+    √ TEST-F02-02c: PM เรียก endpoint ของ PM → 200 (8 ms)
+  TEST-F02-03 — ความเป็นเจ้าของข้อมูล (AC-F02-03, BR-08)
+    √ TEST-F02-03a: เจ้าของทรัพยากร (Participant A) → 200 (10 ms)
+    √ TEST-F02-03b: Participant คนอื่น (B) → 404 ไม่ยืนยันว่าข้อมูลมีอยู่ (9 ms)
+    √ TEST-F02-03c: PM อ่านทรัพยากรของ Participant → 403 (8 ms)
+  TEST-F02-04 — error ที่ปลอดภัย (AC-F02-04, NFR-06)
+    √ TEST-F02-04a: error ที่ไม่คาดคิด → 500 ข้อความกลาง ไม่มี SQL/stack/message ภายใน (7 ms)
+    √ TEST-F02-04b: JSON พัง → 400 ข้อความคงที่ ไม่มีข้อความ parse ของ library (11 ms)
+    √ TEST-F02-04c: route ที่ไม่มีอยู่ → 404 JSON ข้อความคงที่ (4 ms)
+
+PASS tests/templates.test.js
+  TEST-F03-01 — PM สร้างแม่แบบ (AC-F03-01)
+    √ TEST-F03-01: 201, unit=minutes, บันทึกใน DB ด้วย created_by = PM (11 ms)
+  TEST-F03-02 — Participant สร้างไม่ได้ (AC-F03-02, BR-07)
+    √ TEST-F03-02: 403 และไม่มีแถวใหม่ (7 ms)
+  TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09)
+    √ TEST-F03-03a: min_value=0 → 400 พร้อม fields (6 ms)
+    √ TEST-F03-03a: min_value=961 → 400 พร้อม fields (7 ms)
+    √ TEST-F03-03a: max_value=961 → 400; min=1,max=960 → 201 (9 ms)
+    √ TEST-F03-03b: max < min → 400 (5 ms)
+    √ TEST-F03-03b: ทศนิยม → 400 (5 ms)
+    √ TEST-F03-03b: เป็น string → 400 (6 ms)
+    √ TEST-F03-03b: ขาด min_value → 400 (5 ms)
+    √ TEST-F03-03b: ขาด max_value → 400 (5 ms)
+    √ TEST-F03-03c: ชื่อไม่ถูกต้อง (0) → 400 (5 ms)
+    √ TEST-F03-03c: ชื่อไม่ถูกต้อง (1) → 400 (5 ms)
+    √ TEST-F03-03c: ชื่อไม่ถูกต้อง (2) → 400 (4 ms)
+    √ TEST-F03-03c: ชื่อ 100 ตัวอักษร → 201; unit=hours → 400 (14 ms)
+  TEST-F03-04/05 — รายการแม่แบบ (AC-F03-04, AC-F03-05)
+    √ TEST-F03-04: PM เห็นเฉพาะของตน (17 ms)
+    √ TEST-F03-05: Participant เห็นเฉพาะที่ไม่ archived (19 ms)
+  TEST-F03-06 — ต้อง login (NFR-01)
+    √ TEST-F03-06: post /api/templates ไม่มี cookie → 401 (5 ms)
+    √ TEST-F03-06: get /api/templates ไม่มี cookie → 401 (4 ms)
+
+PASS tests/validate.test.js
+  TEST-F03-U1 — validateTemplate (S-2, S-3, S-1)
+    √ ข้อมูลถูกต้อง → ok
+    √ min_value=0 → ไม่ผ่าน
+    √ min_value=961 → ไม่ผ่าน
+    √ min_value=-1 → ไม่ผ่าน (1 ms)
+    √ min_value=10.5 → ไม่ผ่าน
+    √ min_value="10" → ไม่ผ่าน
+    √ min_value=null → ไม่ผ่าน
+    √ min_value=undefined → ไม่ผ่าน (1 ms)
+    √ ขอบเขต 1 และ 960 ผ่าน
+    √ max < min → ไม่ผ่านที่ max_value
+    √ name="" → ไม่ผ่าน (1 ms)
+    √ name="   " → ไม่ผ่าน
+    √ name="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" → 
+ไม่ผ่าน
+    √ name=5 → ไม่ผ่าน
+    √ name=undefined → ไม่ผ่าน
+    √ name 100 ตัวอักษรผ่าน
+    √ unit ที่ไม่ใช่ minutes ไม่ผ่าน; minutes ผ่าน
+  TEST-F03-U1 — validateGoal (S-5)
+    √ ข้อมูลถูกต้อง → ok
+    √ target_minutes=0 → ไม่ผ่าน
+    √ target_minutes=-5 → ไม่ผ่าน
+    √ target_minutes=1.5 → ไม่ผ่าน
+    √ target_minutes="100" → ไม่ผ่าน
+    √ target_minutes=null → ไม่ผ่าน
+    √ target_minutes=undefined → ไม่ผ่าน
+    √ target_minutes = 1 ผ่าน (1 ms)
+    √ end_date="2026-02-30" → ไม่ผ่าน
+    √ end_date="x" → ไม่ผ่าน
+    √ end_date="2026-1-5" → ไม่ผ่าน
+    √ end_date=undefined → ไม่ผ่าน
+    √ end_date=20261120 → ไม่ผ่าน
+    √ end ก่อน start → ไม่ผ่าน; end = start ผ่าน (1 ms)
+    √ start ก่อนวันนี้ → ไม่ผ่าน; start = วันนี้ ผ่าน
+    √ ระยะ 365 วันผ่าน 366 วันไม่ผ่าน (นับรวมปลาย) (1 ms)
+  TEST-F03-U1 — dates (S-11)
+    √ daysInclusive นับรวมวันปลายทั้งสอง
+    √ isValidDate
+    √ todayBangkok: 17:00Z ของวันก่อนหน้าคือเที่ยงคืน Bangkok (วันถัดไป)
+
+Test Suites: 7 passed, 7 total
+Tests:       171 passed, 171 total
+Snapshots:   0 total
+Time:        7.979 s, estimated 9 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after 
+all tests finished?

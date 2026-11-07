@@ -1,0 +1,28 @@
+﻿
+# GREEN run — UI-01
+commit: d065222efbfd863f6a27e3612d7c5a0833a0ce01
+date:   2026-11-07T12:39:50Z
+command: cd frontend && npm test
+
+อธิบาย: ทุกหน้าจอ, Journey, และการป้องกันสิทธิ์ Route Redirect ตาม Role (TEST-UI-09) ผ่านการทดสอบ Vitest ครบ 100% (12 passed, 0 failed)
+
+
+> frontend@0.0.0 test
+> vitest run --run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mC:/Users/EgqZ/Downloads/SE/study-habit-tracker/frontend[39m
+
+ [32m✓[39m src/tests/components.test.jsx [2m([22m[2m3 tests[22m[2m)[22m[32m 247[2mms[22m[39m
+ [32m✓[39m src/tests/journey.test.jsx [2m([22m[2m2 tests[22m[2m)[22m[33m 910[2mms[22m[39m
+     [33m[2m✓[22m[39m PM Journey: เข้าสู่ระบบ -> เปิดหน้า Templates -> สร้างแม่แบบสำเร็จ -> เห็นในรายการ [33m 688[2mms[22m[39m
+ [32m✓[39m src/tests/auth.test.jsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1766[2mms[22m[39m
+     [33m[2m✓[22m[39m TEST-UI-02a: AC-UI-02 Login สำเร็จ นำทางไปหน้า Dashboard แสดงชื่อผู้ใช้และ role [33m 536[2mms[22m[39m
+     [33m[2m✓[22m[39m TEST-UI-02b: AC-UI-02 Login ผิดพลาด (401) แสดงข้อความ Invalid username or password (NFR-06) [33m 452[2mms[22m[39m
+     [33m[2m✓[22m[39m TEST-UI-09: PM logout จาก /templates แล้ว Participant login ต่อ -> ไป /dashboard ไม่ใช่หน้า 403 /templates [33m 467[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m   Start at [22m 19:39:37
+[2m   Duration [22m 4.02s[2m (transform 366ms, setup 858ms, import 901ms, tests 2.92s, environment 4.25s)[22m
+

@@ -10,6 +10,7 @@
 - Feature: `F-xx`
 - Acceptance Criteria: `AC-Fxx-nn` เช่น `AC-F05-02` คือข้อที่ 2 ของ feature F-05
 - Test: `TEST-Fxx-nn` เช่น `TEST-F05-02` ตรวจ `AC-F05-02`
+- งาน UI ใช้ `UI-01` (AC: `AC-UI-nn`, Test: `TEST-UI-nn`) เป็นงานส่วนหน้าที่ครอบคลุมทุก feature ไม่ใช่ requirement ใหม่ (ดู §4)
 - AC และ test ของ Sprint 1 กำหนดจริงใน Part E ส่วนของ Sprint 2–3 กำหนดก่อน implement แต่ละ feature
 
 ## 2. รายการ feature
@@ -48,4 +49,5 @@ Journey ที่ใช้ demo: PM สร้างแม่แบบ → Partic
 ## 4. ขอบเขตและความเป็นไปได้ของ Sprint 1
 
 Sprint 1 มี 8 feature (F-01 ถึง F-08) โดย F-02, F-07, F-08 เป็นงานพื้นฐานที่ใช้ร่วมกัน ส่วนที่เป็น domain slice จริงคือ F-03 ถึง F-06
+**UI-01 (issue #6)** เพิ่มเมื่อ 7 พ.ย. 2026: หน้าจอ React (login, แม่แบบ, เป้าหมาย, บันทึกรายวัน, ความคืบหน้า) เพราะสเปก Sprint 1 ต้องมี journey UI → API → DB ไม่ได้เพิ่ม FR/BR/NFR ใหม่ จึงไม่กระทบจำนวน feature 16 รายการของ baseline
 Feature ของ Sprint 2–3 (F-09 ถึง F-15) ตั้งชื่อ ระบุ requirement และ dependency ไว้แล้ว แต่ยังไม่ลงรายละเอียด AC และ test ตามที่สเปกอนุญาต
