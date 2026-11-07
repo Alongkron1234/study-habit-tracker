@@ -128,12 +128,12 @@ Level: API integration (supertest + Postgres จริง)
 
 ## 5. Definition of Done และหลักฐาน
 
-- [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก)
-- [ ] เทสต์ทุกข้อใน §4 เขียนก่อนโค้ดและบันทึกผลรัน **fail** พร้อม commit — ผลรัน `evidence/F-05-F-06-red-run.txt`
-- [ ] โค้ดครบตาม §2 และ `npm test` ผ่านทุกเทสต์ — ผลรัน `evidence/F-05-F-06-green-run.txt`
-- [ ] เทสต์ของ F-07, F-01, F-02, F-03, F-04 ยังผ่าน (regression) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
-- [ ] response ไม่มี `goal_id`, `user_id`, secret; ไม่มี SQL/stack ใน error
-- [ ] `docs/traceability.md` อัปเดตแถว FR-08–10, BR-01, BR-02 (entry), BR-03, BR-05 (entry), BR-06, BR-08 (entry/progress), BR-09 (entry), NFR-05 ด้วยเลข AC/TEST และ commit SHA
+- [x] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — `a1590fe`
+- [x] เทสต์ทุกข้อใน §4 เขียนก่อนโค้ดและบันทึกผลรัน **fail** พร้อม commit — เทสต์ `1fd8142`, ผลรัน `evidence/F-05-F-06-red-run.txt` (33 fail / 138 pass)
+- [x] โค้ดครบตาม §2 และ `npm test` ผ่านทุกเทสต์ — โค้ด `5370950`, ผลรัน `evidence/F-05-F-06-green-run.txt` (171/171)
+- [x] เทสต์ของ F-07, F-01, F-02, F-03, F-04 ยังผ่าน (รวมอยู่ใน 171/171) (regression) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
+- [x] response ไม่มี `goal_id`, `user_id`, secret; ไม่มี SQL/stack ใน error
+- [x] `docs/traceability.md` อัปเดตแถว FR-08–10, BR-01, BR-02 (entry), BR-03, BR-05 (entry), BR-06, BR-08 (entry/progress), BR-09 (entry), NFR-01, NFR-05 ด้วยเลข AC/TEST และ commit SHA
 - [ ] PR เข้า `sprint-1-staging` ผ่าน review จาก @Alongkron1234
 
 ---
