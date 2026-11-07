@@ -13,7 +13,7 @@
 | Feature inventory + traceability | ร่างแล้ว |
 | แผน 3 sprint | ร่างแล้ว |
 | System-Level SDS | ร่างครบ v0.1 (ส่วนที่ยังเป็นแผนระบุไว้ในเอกสาร) |
-| Sprint 1 | พร้อมส่ง: F-07, F-08, F-01, F-02, F-03, F-04, F-05, F-06 และ UI-01 merge ครบถ้วน |
+| Sprint 1 | กำลังสรุปผล: F-07, F-08, F-01, F-02, F-03, F-04, F-05, F-06 ผ่านการทดสอบและ merge แล้ว; UI-01 (ครอบคลุม auth, templates, goals, entries, progress) อยู่ในขั้นตอน PR |
 
 ## เอกสาร
 

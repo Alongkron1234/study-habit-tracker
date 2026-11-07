@@ -92,8 +92,10 @@ describe('Auth & Route Protection (AC-UI-01, AC-UI-02, AC-UI-03, AC-UI-04, AC-UI
   });
 
   it('TEST-UI-02b: AC-UI-02 Login ผิดพลาด (401) แสดงข้อความ Invalid username or password (NFR-06)', async () => {
-    authApi.getMe.mockRejectedValueOnce(new Error('Unauthorized'));
-    authApi.login.mockRejectedValueOnce(new Error('Unauthorized'));
+    const err401 = new Error('Unauthorized');
+    err401.status = 401;
+    authApi.getMe.mockRejectedValueOnce(err401);
+    authApi.login.mockRejectedValueOnce(err401);
 
     const user = userEvent.setup();
 

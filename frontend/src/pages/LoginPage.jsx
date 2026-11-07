@@ -28,9 +28,13 @@ export function LoginPage() {
     try {
       await login(username.trim(), password);
       navigate(from, { replace: true });
-    } catch {
-      // General safe message according to AC-UI-02 and NFR-06
-      setErrorMessage('Invalid username or password');
+    } catch (err) {
+      // Differentiate 401 (Invalid credentials) vs Network/500 Server errors
+      if (err.status === 401) {
+        setErrorMessage('Invalid username or password');
+      } else {
+        setErrorMessage('Unable to connect to server. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -94,4 +98,3 @@ export function LoginPage() {
     </div>
   );
 }
-

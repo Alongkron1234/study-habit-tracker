@@ -18,8 +18,8 @@
 2. **การเข้าสู่ระบบ (Login):**
    - ผู้ใช้กรอก username และ password
    - ส่งคำขอ `POST /api/auth/login` พร้อม credential
-   - หากสำเร็จ (200): เก็บสถานะผู้ใช้ (`user: { id, username, email, role }`) และ redirect ไปยังหน้า Dashboard ตามสิทธิ์
-   - หากล้มเหลว (401): แสดงข้อความ error ทั่วไป "Invalid username or password" โดยไม่แยกว่าฟิลด์ใดผิด (NFR-06)
+   - หากสำเร็จ (200): เก็บสถานะผู้ใช้ (`user: { id, username, role }`) และ redirect ไปยังหน้า Dashboard ตามสิทธิ์
+   - หากล้มเหลว (401): แสดงข้อความ error "Invalid username or password" โดยไม่แยกว่าฟิลด์ใดผิด (NFR-06) ส่วน error อื่นๆ เช่น เชื่อมต่อไม่ได้จะแสดงข้อความทั่วไปแจ้งเตือนผู้ใช้
 3. **การแสดงผลตามสิทธิ์และสถานะ (Navigation & Layout):**
    - Header แสดงชื่อผู้ใช้ และ Badge แสดงบทบาท (`pm` หรือ `participant`)
    - เมนูนำทางแสดงเฉพาะส่วนที่บทบาทนั้นเข้าถึงได้:
@@ -85,7 +85,7 @@ frontend/
 | ID | เงื่อนไข (ผลที่สังเกตได้) | Requirement |
 |---|---|---|
 | **AC-UI-01** | เปิดเว็บโดยยังไม่ login → แสดงหน้า Login; พยายามเข้า protected route → redirect มาหน้า login | FR-01, A-01 |
-| **AC-UI-02** | Login ถูกต้อง → เข้า Dashboard เห็น username และ role; Login ผิดพลาด (401) → แสดง error กลาง "Invalid username or password" ไม่แยก username/password | FR-01, NFR-06 |
+| **AC-UI-02** | Login ถูกต้อง → เข้า Dashboard เห็น username และ role (ไม่มีฟิลด์ email ตาม contract F-01); Login ผิดพลาด (401) → แสดง error "Invalid username or password" ไม่แยก username/password (NFR-06); ปัญหาสัญญาณเครือข่าย/เซิร์ฟเวอร์ → แสดงข้อความทั่วไป | FR-01, NFR-06 |
 | **AC-UI-03** | กด Logout → เรียก `/api/auth/logout`, ล้าง session ใน client, redirect ไป Login; กดย้อนกลับไม่สามารถดูข้อมูลเดิมได้ | FR-02 |
 | **AC-UI-04** | เมื่อ API ภายในแอปตอบ 401 Unauthorized → client ดักจับ ล้าง user state และพากลับหน้า Login พร้อมแสดงข้อความ session หมดอายุ | FR-01, NFR-03 |
 | **AC-UI-05** | มีคอมโพเนนต์สถานะร่วม (Loading, Empty, Error) ที่สามารถใช้งานซ้ำได้อย่างสม่ำเสมอ | Issue #6 scope |
@@ -108,6 +108,8 @@ frontend/
 | **TEST-UI-04** | AC-UI-04 | API ภายในส่ง 401 Unauthorized กลับมา | AuthContext รับทราบ ล้าง state นำทางไปหน้า Login พร้อมข้อความเตือน |
 | **TEST-UI-05** | AC-UI-05 | Render LoadingSpinner, EmptyState, ErrorAlert | แสดงข้อความหรือ DOM element ถูกต้องตาม props |
 | **TEST-UI-06** | AC-UI-06 | Render Navbar ด้วย user role ต่างๆ (`pm`, `participant`) | Badge role ถูกต้อง เมนูแสดงตามบทบาทอย่างเหมาะสม |
+| **TEST-UI-07** | Journey | PM เข้าสู่ระบบ → เปิดหน้า /templates → สร้างแม่แบบ → เห็นแม่แบบในรายการ | สำเร็จตาม workflow ของ F-03 |
+| **TEST-UI-08** | Journey | Participant เข้าสู่ระบบ → เปิด /goals/:id → บันทึกนาที → ความคืบหน้าคำนวณใหม่ | สำเร็จตาม workflow ของ F-04, F-05, F-06 |
 
 ---
 

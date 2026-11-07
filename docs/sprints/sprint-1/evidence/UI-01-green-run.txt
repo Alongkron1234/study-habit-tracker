@@ -1,25 +1,19 @@
-
-# GREEN run — UI-01
-commit: 0cc7e3e29f3d64c12ffdb262fce91475752c0fc6
-date:   2026-11-07T11:47:08Z
-command: cd frontend && npm test
-
-อธิบาย: คอมโพเนนต์และระบบ Auth & Route Protection ผ่านการทดสอบ Vitest ครบ 100% (9 passed, 0 failed)
-
-
+﻿
 > frontend@0.0.0 test
 > vitest run --run
 
 
 [1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mC:/Users/EgqZ/Downloads/SE/study-habit-tracker/frontend[39m
 
- [32m✓[39m src/tests/components.test.jsx [2m([22m[2m3 tests[22m[2m)[22m[32m 271[2mms[22m[39m
- [32m✓[39m src/tests/auth.test.jsx [2m([22m[2m6 tests[22m[2m)[22m[33m 1296[2mms[22m[39m
-     [33m[2m✓[22m[39m TEST-UI-02a: AC-UI-02 Login สำเร็จ นำทางไปหน้า Dashboard แสดงชื่อผู้ใช้และ role [33m 479[2mms[22m[39m
-     [33m[2m✓[22m[39m TEST-UI-02b: AC-UI-02 Login ผิดพลาด (401) แสดงข้อความ Invalid username or password (NFR-06) [33m 452[2mms[22m[39m
+ [32m✓[39m src/tests/components.test.jsx [2m([22m[2m3 tests[22m[2m)[22m[32m 241[2mms[22m[39m
+ [32m✓[39m src/tests/journey.test.jsx [2m([22m[2m2 tests[22m[2m)[22m[33m 894[2mms[22m[39m
+     [33m[2m✓[22m[39m PM Journey: เข้าสู่ระบบ -> เปิดหน้า Templates -> สร้างแม่แบบสำเร็จ -> เห็นในรายการ [33m 672[2mms[22m[39m
+ [32m✓[39m src/tests/auth.test.jsx [2m([22m[2m6 tests[22m[2m)[22m[33m 1193[2mms[22m[39m
+     [33m[2m✓[22m[39m TEST-UI-02a: AC-UI-02 Login สำเร็จ นำทางไปหน้า Dashboard แสดงชื่อผู้ใช้และ role [33m 472[2mms[22m[39m
+     [33m[2m✓[22m[39m TEST-UI-02b: AC-UI-02 Login ผิดพลาด (401) แสดงข้อความ Invalid username or password (NFR-06) [33m 424[2mms[22m[39m
 
-[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
-[2m      Tests [22m [1m[32m9 passed[39m[22m[90m (9)[39m
-[2m   Start at [22m 18:46:49
-[2m   Duration [22m 4.19s[2m (transform 223ms, setup 688ms, import 615ms, tests 1.57s, environment 3.79s)[22m
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m11 passed[39m[22m[90m (11)[39m
+[2m   Start at [22m 19:24:46
+[2m   Duration [22m 3.31s[2m (transform 267ms, setup 866ms, import 802ms, tests 2.33s, environment 3.95s)[22m
 

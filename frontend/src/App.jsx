@@ -5,6 +5,9 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { TemplatesPage } from './pages/TemplatesPage';
+import { GoalsPage } from './pages/GoalsPage';
+import { GoalDetailPage } from './pages/GoalDetailPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
 
 export function AppRoutes() {
@@ -19,6 +22,32 @@ export function AppRoutes() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* PM only route (F-03) */}
+          <Route
+            path="/templates"
+            element={
+              <ProtectedRoute allowedRoles={['pm']}>
+                <TemplatesPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Participant only routes (F-04, F-05, F-06) */}
+          <Route
+            path="/goals"
+            element={
+              <ProtectedRoute allowedRoles={['participant']}>
+                <GoalsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/goals/:id"
+            element={
+              <ProtectedRoute allowedRoles={['participant']}>
+                <GoalDetailPage />
               </ProtectedRoute>
             }
           />

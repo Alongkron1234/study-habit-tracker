@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Link } from 'react-router-dom';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -21,10 +22,6 @@ export function DashboardPage() {
             <span className="profile-value">{user?.username}</span>
           </div>
           <div className="profile-row">
-            <span className="profile-label">Email:</span>
-            <span className="profile-value">{user?.email}</span>
-          </div>
-          <div className="profile-row">
             <span className="profile-label">Role:</span>
             <span className={`role-badge role-${user?.role}`}>{user?.role}</span>
           </div>
@@ -32,18 +29,31 @@ export function DashboardPage() {
       </div>
 
       <div className="dashboard-card role-guidance-card">
-        <h3>Role Capabilities</h3>
+        <h3>Quick Actions</h3>
         {user?.role === 'pm' ? (
-          <p>
-            As a <strong>Project Manager</strong>, you can create and manage activity templates for participants.
-          </p>
+          <div>
+            <p>
+              As a <strong>Project Manager</strong>, you can define habit templates for participants.
+            </p>
+            <div style={{ marginTop: '1rem' }}>
+              <Link to="/templates" className="btn-primary" data-testid="nav-templates-btn">
+                Manage Activity Templates
+              </Link>
+            </div>
+          </div>
         ) : (
-          <p>
-            As a <strong>Participant</strong>, you can set study goals, record daily habit minutes, and track your progress.
-          </p>
+          <div>
+            <p>
+              As a <strong>Participant</strong>, you can set goals, record your daily study minutes, and see your progress.
+            </p>
+            <div style={{ marginTop: '1rem' }}>
+              <Link to="/goals" className="btn-primary" data-testid="nav-goals-btn">
+                Go to My Goals
+              </Link>
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 }
-
