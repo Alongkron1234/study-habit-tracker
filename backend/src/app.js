@@ -56,8 +56,7 @@ function createApp(options = {}) {
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/templates', require('./routes/templates'));
   app.use('/api/goals',     require('./routes/goals'));
-  // (mounted by later branches)
-  // app.use('/api/entries',   require('./routes/entries'));
+  app.use('/api/goals',     require('./routes/entries')); // F-05/F-06: /:id/entries, /:id/progress
 
   if (typeof options.mountRoutes === 'function') {
     options.mountRoutes(app);
