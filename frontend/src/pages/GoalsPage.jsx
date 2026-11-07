@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { getGoals, createGoal } from '../api/goals';
 import { getTemplates } from '../api/templates';
 import { LoadingSpinner, EmptyState, ErrorAlert } from '../components/StateFeedback';
+import { friendlyFields } from '../lib/messages';
 
 export function GoalsPage() {
   const [goals, setGoals] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [templateNames, setTemplateNames] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -35,7 +37,9 @@ export function GoalsPage() {
     try {
       const [goalsRes, tplsRes] = await Promise.all([getGoals(), getTemplates()]);
       setGoals(goalsRes.goals || []);
-      const activeTpls = (tplsRes.templates || []).filter((t) => !t.is_archived);
+      const allTpls = tplsRes.templates || [];
+      setTemplateNames(Object.fromEntries(allTpls.map((t) => [t.id, t.name])));
+      const activeTpls = allTpls.filter((t) => !t.is_archived);
       setTemplates(activeTpls);
       if (activeTpls.length > 0 && !templateId) {
         setTemplateId(activeTpls[0].id);
@@ -69,9 +73,9 @@ export function GoalsPage() {
       loadData();
     } catch (err) {
       if (err.status === 409) {
-        setFormError('You already have an active goal for this activity template (BR-05)');
+        setFormError('You already have an active goal for this activity template. Wait until it ends before setting a new one.');
       } else if (err.data?.fields) {
-        setFieldErrors(err.data.fields);
+        setFieldErrors(friendlyFields(err.data.fields));
         setFormError('Please check the form for errors');
       } else {
         setFormError(err.message || 'Failed to create goal');
@@ -91,9 +95,6 @@ export function GoalsPage() {
       {/* Goal Creation Form */}
       <div className="dashboard-card form-card">
         <h3>Set a New Study Goal</h3>
-        {successMsg && <div className="alert alert-success">{successMsg}</div>}
-        {formError && <ErrorAlert message={formError} />}
-
         {templates.length === 0 ? (
           <p className="text-muted">No activity templates available. Ask your PM to create one.</p>
         ) : (
@@ -172,6 +173,8 @@ export function GoalsPage() {
             </button>
           </form>
         )}
+        {successMsg && <div className="alert alert-success" role="status">{successMsg}</div>}
+        {formError && <ErrorAlert message={formError} />}
       </div>
 
       {/* Goal List */}
@@ -187,7 +190,7 @@ export function GoalsPage() {
             {goals.map((g) => (
               <div key={g.id} className="item-card goal-card" data-testid={`goal-card-${g.id}`}>
                 <div className="goal-header">
-                  <h4>Goal #{g.id}</h4>
+                  <h4>{templateNames[g.template_id] || `Goal #${g.id}`}</h4>
                   <span className={`status-tag tag-${g.status}`}>{g.status}</span>
                 </div>
                 <div className="item-meta">
