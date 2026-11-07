@@ -20,7 +20,7 @@ model: Sonnet5.5 , effort: medium
 | Claude (แชท) | ร่าง SRS v0.2, feature inventory, traceability, แผน 3 sprint (Part A, B, D) | อ่านและตกลง decision ร่วมกันกับเพื่อน แก้ตามความเหมาะสมของทีม |
 | Claude Code | Issue #2 / PR #7: contract, เทสต์, โค้ด และหลักฐาน red/green ของ F-01 (auth) และ F-02 (สิทธิ์, error ปลอดภัย) | รันเทสต์เอง (red: 29 fail → green: 44/44 ผ่าน); แก้ตาม review ของ atiwit (log เฉพาะ error 5xx, ปรับคอมเมนต์) |
 | Claude Code | Issue #3 / PR #9: contract, เทสต์, โค้ด และหลักฐานของ F-03 (แม่แบบ) และ F-04 (เป้าหมาย) | รันเทสต์เอง (red: 90 fail, 46 pass → green: 136/136 ผ่าน); ตัดสินใจกฎใน contract (S-1 ถึง S-11) ร่วมกับ AI; atiwit review |
-| Claude Code | Part C (System-Level SDS), อัปเดตสถานะใน README/SDS/traceability/plan, ร่างตาราง contributions และไฟล์นี้ | อ่านเทียบกับโค้ดจริง; ลองทำตาม README บนเครื่องสะอาดและพบว่าคำสั่ง DROP DATABASE ใช้ไม่ได้ จึงแก้; เลือก stack (React + Vite) เองพร้อมเหตุผลใน §1.2 |
+| Claude Code | Part C (System-Level SDS), อัปเดตสถานะใน README/SDS/traceability/plan, ร่างตาราง contributions และไฟล์นี้ | อ่านเทียบกับโค้ดจริง; ลองทำตาม README บนเครื่องสะอาดและพบว่าคำสั่ง DROP DATABASE ใช้ไม่ได้ จึงแก้; เลือก stack (React + Vite) เองพร้อมเหตุผลใน 1.2 |
 | Claude Code | ช่วย review PR ของเพื่อน (#5, #10, #11): อ่านโค้ด รันเทสต์ ชี้ประเด็น ร่างคอมเมนต์ และทดสอบ UI กับ backend จริง | รันเทสต์และกดทดสอบเอง ตัดสินใจเองว่าจะ approve หรือขอแก้ และพิมพ์คอมเมนต์บน GitHub เอง |
 
 ## Atiwit Thongngoen 67070501048, GitHub: atiwit
