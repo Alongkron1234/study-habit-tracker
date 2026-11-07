@@ -29,3 +29,4 @@ export async function createGoalEntry(goalId, data) {
     body: data,
   });
 }
+

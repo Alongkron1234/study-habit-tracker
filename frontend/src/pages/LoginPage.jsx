@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ErrorAlert } from '../components/StateFeedback';
+import { isRouteAllowedForRole } from '../config/routes';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
@@ -26,8 +27,10 @@ export function LoginPage() {
 
     setSubmitting(true);
     try {
-      await login(username.trim(), password);
-      navigate(from, { replace: true });
+      const user = await login(username.trim(), password);
+      // ตรวจสอบว่าผู้ใช้ที่เพิ่งล็อกอินมีสิทธิ์เข้าถึงหน้าที่จำไว้ (from) หรือไม่
+      const target = isRouteAllowedForRole(from, user.role) ? from : '/dashboard';
+      navigate(target, { replace: true });
     } catch (err) {
       // Differentiate 401 (Invalid credentials) vs Network/500 Server errors
       if (err.status === 401) {

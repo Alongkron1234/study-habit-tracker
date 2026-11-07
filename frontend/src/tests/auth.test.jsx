@@ -257,4 +257,47 @@ describe('Auth & Route Protection (AC-UI-01, AC-UI-02, AC-UI-03, AC-UI-04, AC-UI
       expect(screen.getByText('participant')).toBeInTheDocument();
     });
   });
+
+  it('TEST-UI-09: PM logout จาก /templates แล้ว Participant login ต่อ -> ไป /dashboard ไม่ใช่หน้า 403 /templates', async () => {
+    // ผู้ใช้คนที่ล็อกอินใหม่เป็น participant
+    const participantUser = { id: 5, username: 'student_bob', role: 'participant' };
+    authApi.getMe.mockRejectedValueOnce(new Error('Unauthorized')); // initial
+    authApi.login.mockResolvedValueOnce({ user: participantUser });
+
+    const user = userEvent.setup();
+
+    // จำลอง location.state มี from ชี้ไปที่ /templates (เพราะ PM คนก่อนหน้าเพิ่ง logout จากหน้านั้น)
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: '/login', state: { from: { pathname: '/templates' } } },
+        ]}
+      >
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route
+              path="/templates"
+              element={<div data-testid="pm-template-screen">PM Only Templates</div>}
+            />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Username/i)).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText(/Username/i), 'student_bob');
+    await user.type(screen.getByLabelText(/Password/i), 'mypassword');
+    await user.click(screen.getByTestId('login-submit'));
+
+    // ต้อง redirect ไป /dashboard (เห็นข้อความ Dashboard) และต้องไม่ไป /templates
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Dashboard/i })).toBeInTheDocument();
+      expect(screen.queryByTestId('pm-template-screen')).not.toBeInTheDocument();
+    });
+  });
 });

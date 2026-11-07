@@ -10,6 +10,8 @@ import { GoalsPage } from './pages/GoalsPage';
 import { GoalDetailPage } from './pages/GoalDetailPage';
 import { UnauthorizedPage } from './pages/UnauthorizedPage';
 
+import { ROUTE_PERMISSIONS } from './config/routes';
+
 export function AppRoutes() {
   return (
     <div className="app-layout">
@@ -29,7 +31,7 @@ export function AppRoutes() {
           <Route
             path="/templates"
             element={
-              <ProtectedRoute allowedRoles={['pm']}>
+              <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/templates']}>
                 <TemplatesPage />
               </ProtectedRoute>
             }
@@ -38,7 +40,7 @@ export function AppRoutes() {
           <Route
             path="/goals"
             element={
-              <ProtectedRoute allowedRoles={['participant']}>
+              <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/goals']}>
                 <GoalsPage />
               </ProtectedRoute>
             }
@@ -46,7 +48,7 @@ export function AppRoutes() {
           <Route
             path="/goals/:id"
             element={
-              <ProtectedRoute allowedRoles={['participant']}>
+              <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/goals/:id']}>
                 <GoalDetailPage />
               </ProtectedRoute>
             }

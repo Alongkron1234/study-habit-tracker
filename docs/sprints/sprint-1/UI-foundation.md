@@ -110,6 +110,7 @@ frontend/
 | **TEST-UI-06** | AC-UI-06 | Render Navbar ด้วย user role ต่างๆ (`pm`, `participant`) | Badge role ถูกต้อง เมนูแสดงตามบทบาทอย่างเหมาะสม |
 | **TEST-UI-07** | Journey | PM เข้าสู่ระบบ → เปิดหน้า /templates → สร้างแม่แบบ → เห็นแม่แบบในรายการ | สำเร็จตาม workflow ของ F-03 |
 | **TEST-UI-08** | Journey | Participant เข้าสู่ระบบ → เปิด /goals/:id → บันทึกนาที → ความคืบหน้าคำนวณใหม่ | สำเร็จตาม workflow ของ F-04, F-05, F-06 |
+| **TEST-UI-09** | Role Redirect | PM logout จาก /templates แล้ว Participant login ต่อ โดยมี state.from ค้างอยู่ | ตรวจพบว่า role ไม่มีสิทธิ์ นำทางไป /dashboard แทนที่จะไปเจอหน้า 403 /templates |
 
 ---
 
