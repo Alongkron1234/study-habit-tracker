@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getGoal, getGoalProgress, getGoalEntries, createGoalEntry } from '../api/goals';
+import { getTemplates } from '../api/templates';
 import { LoadingSpinner, EmptyState, ErrorAlert } from '../components/StateFeedback';
+import { friendlyFields } from '../lib/messages';
 
 export function GoalDetailPage() {
   const { id } = useParams();
   const [goal, setGoal] = useState(null);
   const [progress, setProgress] = useState(null);
   const [entries, setEntries] = useState([]);
+  const [template, setTemplate] = useState(null);
+  const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -28,16 +32,23 @@ export function GoalDetailPage() {
   const loadGoalData = useCallback(async () => {
     setLoading(true);
     setError('');
+    setNotFound(false);
     try {
-      const [goalRes, progRes, entriesRes] = await Promise.all([
+      const [goalRes, progRes, entriesRes, tplRes] = await Promise.all([
         getGoal(id),
         getGoalProgress(id),
         getGoalEntries(id),
+        // ชื่อและช่วงของแม่แบบใช้แสดงผลเท่านั้น ถ้าโหลดไม่ได้ก็ไม่ให้หน้าล้ม
+        Promise.resolve(getTemplates()).catch(() => null),
       ]);
       setGoal(goalRes.goal);
+      setTemplate(
+        ((tplRes && tplRes.templates) || []).find((t) => t.id === goalRes.goal.template_id) || null
+      );
       setProgress(progRes.progress);
       setEntries(entriesRes.entries || []);
     } catch (err) {
+      if (err.status === 404) setNotFound(true);
       setError(err.status === 404 ? 'Goal not found' : 'Failed to load goal details');
     } finally {
       setLoading(false);
@@ -70,9 +81,9 @@ export function GoalDetailPage() {
       setEntries(entriesRes.entries || []);
     } catch (err) {
       if (err.status === 409) {
-        setFormError('You already recorded an entry for this day or goal has ended (BR-01, BR-05)');
+        setFormError('You already recorded minutes for this date, or this goal has ended.');
       } else if (err.data?.fields) {
-        setFieldErrors(err.data.fields);
+        setFieldErrors(friendlyFields(err.data.fields, template));
         setFormError('Please check entry input values');
       } else {
         setFormError(err.message || 'Failed to record entry');
@@ -83,7 +94,14 @@ export function GoalDetailPage() {
   };
 
   if (loading) return <LoadingSpinner message="Loading goal details..." />;
-  if (error) return <ErrorAlert message={error} />;
+  if (error) {
+    return (
+      <div className="page-container">
+        <ErrorAlert message={error} onRetry={notFound ? null : loadGoalData} />
+        <Link to="/goals">← Back to Goals</Link>
+      </div>
+    );
+  }
   if (!goal) return <EmptyState message="Goal not found" />;
 
   const isEnded = goal.status === 'ended';
@@ -96,10 +114,11 @@ export function GoalDetailPage() {
 
       <header className="page-header">
         <div className="header-with-status">
-          <h1>Goal #{goal.id}</h1>
+          <h1>{template ? template.name : `Goal #${goal.id}`}</h1>
           <span className={`status-tag tag-${goal.status}`}>{goal.status}</span>
         </div>
         <p className="page-subtitle">
+          {template && <>Allowed per day: {template.min_value}–{template.max_value} mins | </>}
           Period: {goal.start_date} to {goal.end_date} | Target: {goal.target_minutes} mins
         </p>
       </header>
@@ -139,13 +158,10 @@ export function GoalDetailPage() {
         <h3>Record Daily Study Minutes</h3>
         {isEnded ? (
           <p className="text-muted">
-            This goal has ended ({goal.end_date}). New entries cannot be added (BR-05).
+            This goal has ended ({goal.end_date}). New entries cannot be added 
           </p>
         ) : (
           <>
-            {successMsg && <div className="alert alert-success">{successMsg}</div>}
-            {formError && <ErrorAlert message={formError} />}
-
             <form onSubmit={handleEntrySubmit} className="form-grid">
               <div className="form-row">
                 <div className="form-group">
@@ -188,6 +204,8 @@ export function GoalDetailPage() {
                 {submitting ? 'Recording...' : 'Record Minutes'}
               </button>
             </form>
+            {successMsg && <div className="alert alert-success" role="status">{successMsg}</div>}
+            {formError && <ErrorAlert message={formError} />}
           </>
         )}
       </div>

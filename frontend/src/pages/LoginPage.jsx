@@ -67,7 +67,7 @@ export function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. atiwit"
+              placeholder="Enter your username"
               autoComplete="username"
               disabled={submitting}
               required

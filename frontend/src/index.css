@@ -434,3 +434,62 @@ body {
   text-decoration: none;
   font-weight: 500;
 }
+
+/* UI polish: banners sit below the form so buttons never move */
+.form-card .alert-success,
+.form-card .error-alert {
+  margin: 1rem 0 0;
+}
+
+/* Navbar: wrap on narrow screens instead of overlapping */
+.navbar {
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.nav-brand a {
+  white-space: nowrap;
+}
+
+.user-name {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .nav-brand a {
+    font-size: 1.05rem;
+  }
+
+  .nav-menu {
+    order: 3;
+    width: 100%;
+    gap: 1rem;
+  }
+
+  .nav-user-section {
+    margin-left: auto;
+    gap: 0.5rem;
+  }
+}
+
+/* Date inputs must not overflow their card on narrow screens */
+.form-row > .form-group {
+  min-width: 0;
+}
+
+.form-group input[type='date'] {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+}

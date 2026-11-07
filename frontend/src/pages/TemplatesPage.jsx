@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getTemplates, createTemplate } from '../api/templates';
 import { LoadingSpinner, EmptyState, ErrorAlert } from '../components/StateFeedback';
+import { friendlyFields } from '../lib/messages';
 
 export function TemplatesPage() {
   const [templates, setTemplates] = useState([]);
@@ -53,7 +54,7 @@ export function TemplatesPage() {
       loadTemplates();
     } catch (err) {
       if (err.data?.fields) {
-        setFieldErrors(err.data.fields);
+        setFieldErrors(friendlyFields(err.data.fields));
         setFormError('Please check the form for errors');
       } else {
         setFormError(err.message || 'Failed to create template');
@@ -73,9 +74,6 @@ export function TemplatesPage() {
       {/* Template Creation Form */}
       <div className="dashboard-card form-card">
         <h3>Create New Activity Template</h3>
-        {successMsg && <div className="alert alert-success">{successMsg}</div>}
-        {formError && <ErrorAlert message={formError} />}
-
         <form onSubmit={handleSubmit} className="form-grid">
           <div className="form-group">
             <label htmlFor="template-name">Template Name</label>
@@ -129,6 +127,8 @@ export function TemplatesPage() {
             {submitting ? 'Creating...' : 'Create Template'}
           </button>
         </form>
+        {successMsg && <div className="alert alert-success" role="status">{successMsg}</div>}
+        {formError && <ErrorAlert message={formError} />}
       </div>
 
       {/* Template List */}
