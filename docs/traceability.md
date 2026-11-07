@@ -47,11 +47,11 @@
 | NFR-01 ไม่มี session → 401 | F-01, F-02 | 1 | API test ครอบคลุมทุก endpoint ที่ป้องกัน | 1 (ทดสอบซ้ำทุก sprint) | ผ่านกับ endpoint ปัจจุบัน — AC-F02-01 · TEST-F02-01a, b (@c7c0508); endpoint F-05/F-06 เพิ่มใน PROTECTED_ENDPOINTS — TEST-F05-07a–c (@5370950) |
 | NFR-02 hash รหัสผ่าน | F-01 | 1 | Integration บน DB + ตรวจโค้ด | 1 | ผ่าน — AC-F01-06 · TEST-F01-06 (@c7c0508) |
 | NFR-03 session หมดอายุ 8 ชม. | F-01 | 1 | API test ด้วย token หมดอายุ/ถูกเพิกถอน | 1 | ผ่าน — AC-F01-04, 05, 07 · TEST-F01-04, 05a, 05b, 07 (@c7c0508) |
-| NFR-04 ข้อมูลอยู่รอดหลังรีสตาร์ต | F-07 | 1 | Integration: เขียน → รีสตาร์ต → อ่าน | 1 | วางแผน |
+| NFR-04 ข้อมูลอยู่รอดหลังรีสตาร์ต | F-07 | 1 | Integration: เขียน → รีสตาร์ต → อ่าน | 1 | ผ่าน — AC-F07-01 · TEST-F07-01 (@dcc34b6) |
 | NFR-05 ส่งพร้อมกันเหลือ 1 entry | F-05 (พึ่ง F-07) | 1 | Integration คำขอขนาน | 1 | ผ่าน — AC-F05-02 · TEST-F05-02b (concurrent 5 req → 1 success, 4×409) (@5370950) |
 | NFR-06 error ไม่เปิดเผยข้อมูลภายใน | F-02 | 1 | API test ตรวจรูปแบบ error | 1 | ผ่าน — AC-F02-04 · TEST-F02-04a–c (@c7c0508) |
-| NFR-07 ติดตั้งใน 15 นาที | F-08 | 1 | เพื่อนทำตาม README บนเครื่องสะอาด | 1 | วางแผน |
-| NFR-08 ไม่ commit secret | F-08 | 1 | สแกน repo + review | 1 | วางแผน |
+| NFR-07 ติดตั้งใน 15 นาที | F-08 | 1 | เพื่อนทำตาม README บนเครื่องสะอาด | 1 | ผ่านบางส่วน — AC-F08-01: clone ใหม่จาก staging → migrate → seed → start → login/logout → รันเทสต์ ผ่านบนเครื่องของ Alongkron1234 (7 พ.ย. 2026, @dcc34b6, ไม่ได้จับเวลา 15 นาที); รอ atiwit ลองซ้ำตามสเปก |
+| NFR-08 ไม่ commit secret | F-08 | 1 | สแกน repo + review | 1 | ผ่าน — AC-F08-02: สแกนทั้ง history ไม่พบ secret จริง มีเฉพาะ `.env.example` และ `backend/.env.test.example`, `.env*` อยู่ใน `.gitignore` (7 พ.ย. 2026, @dcc34b6) |
 | NFR-09 p95 < 500 ms | F-12 | 2 | สคริปต์จับเวลา | 2 | วางแผน |
 | NFR-10 รันใน container | F-16 | Lab 5 | Docker build/run | Lab 5 | วางแผน |
 

@@ -1,6 +1,6 @@
 # System-Level SDS (Part C)
 
-**ผลิตภัณฑ์:** Study Habit Tracker | **เวอร์ชัน:** 0.1 (ร่าง) | **อ้างอิง:** SRS v0.2, `features.md`, `traceability.md`
+**ผลิตภัณฑ์:** Study Habit Tracker | **เวอร์ชัน:** 0.2 (ร่าง) | **อ้างอิง:** SRS v0.2, `features.md`, `traceability.md`
 **วันที่:** 2026-11-07
 
 เอกสารนี้อธิบายการออกแบบระดับทั้งระบบ รายละเอียดของแต่ละ feature (endpoint, AC, test) อยู่ใน contract ของ feature นั้นที่ `docs/sprints/sprint-N/`
@@ -12,12 +12,12 @@
 
 | ชั้น | เทคโนโลยี | สถานะ |
 |---|---|---|
-| Frontend | React + Vite (SPA), React Router | แผน (issue #6) |
+| Frontend | React + Vite (SPA), React Router | ทำแล้ว (UI-01, PR #11) |
 | Backend / API | Node.js 20+, Express 4 | ทำแล้ว |
 | ฐานข้อมูล | PostgreSQL (ทดสอบบน 16, README ระบุขั้นต่ำ 14) ผ่านไลบรารี `pg` ไม่ใช้ ORM | ทำแล้ว |
 | Session | `express-session` เก็บใน Postgres ผ่าน `connect-pg-simple` | ทำแล้ว |
 | รหัสผ่าน | `bcrypt` (10 rounds) | ทำแล้ว |
-| ทดสอบ | Jest + supertest (unit, API/DB integration); E2E สำหรับ journey หลักเลือกเครื่องมือใน contract ของ UI | Jest ทำแล้ว, E2E แผน |
+| ทดสอบ | Jest + supertest (unit, API/DB integration); E2E สำหรับ journey หลักเลือกเครื่องมือใน contract ของ UI | Jest (backend) และ Vitest + React Testing Library (frontend) ทำแล้ว; เทสต์ journey ของ UI ใช้ mock API ยังไม่มี E2E อัตโนมัติ |
 | Container / Deploy | Docker, GCP (ดู §7) | แผน (Lab 5) |
 
 สเปกวิชา §5.1 ให้เลือก stack เองและให้อธิบายเหตุผลที่นี่ (ไม่ต้องตรงกับ Lab 1–4)
@@ -52,13 +52,13 @@
 | API (Express) | ตรวจ session/role/ความเป็นเจ้าของ ตรวจข้อมูลและกฎธุรกิจ คำนวณความคืบหน้า แปลง error เป็นรูปแบบปลอดภัย | ไม่เก็บสถานะใน memory (ใช้ฐานข้อมูล) |
 | ฐานข้อมูล | เก็บข้อมูลถาวร บังคับ constraint ที่เป็นหลักประกันสุดท้าย (ซ้ำ, ช่วงค่า, 1 active goal) | ไม่มี logic ธุรกิจนอกเหนือจาก constraint |
 
-โครงโค้ด (ทำแล้ว ยกเว้น `frontend/`):
+โครงโค้ด (ทำแล้วทั้งหมด):
 
 ```
 backend/src/  app.js (createApp) · index.js (listen) · db/ (pool, migrate, migrations/, seeds/)
-              middleware/ (auth.js, errors.js) · routes/ (auth.js; templates/goals/entries ตามมา)
-backend/tests/  persistence · auth · rbac (+ helpers/)
-frontend/       (แผน, issue #6)
+              middleware/ (auth.js, errors.js) · routes/ (auth, templates, goals, entries)
+backend/tests/  persistence · auth · rbac · templates · goals · entries · validate (+ helpers/)
+frontend/       src/ (api/ context/ components/ pages/ config/ tests/) · vite.config.js (proxy /api)
 docs/           เอกสารทั้งหมด · docs/sprints/sprint-N/ contract และ evidence
 ```
 
@@ -68,12 +68,12 @@ docs/           เอกสารทั้งหมด · docs/sprints/sprint-N
 
 | กฎ | API (app) | ฐานข้อมูล | สถานะ |
 |---|---|---|---|
-| BR-01 1 entry ต่อวัน (รวม NFR-05 คำขอพร้อมกัน) | ตรวจก่อนบันทึก และแปลง error 23505 เป็น 409/400 | `UNIQUE(goal_id, entry_date)` | DB ทำแล้ว, API แผน (F-05) |
-| BR-02 ช่วงค่า entry | ตรวจจำนวนเต็ม อยู่ในช่วงของแม่แบบ | CHECK minutes 1–960, template min ≥ 1 และ max ≤ 960 | DB ทำแล้ว, API แผน (F-03/F-05) |
-| BR-03 ช่วงวันที่ของ entry | ตรวจในช่วงเป้าหมาย ไม่อนาคต ย้อนหลังไม่เกิน 7 วัน | ไม่มี (ขึ้นกับวันปัจจุบัน) | แผน (F-05) |
-| BR-04 เงื่อนไขเป้าหมาย | ยอดเป็นจำนวนเต็มบวก วันเริ่มไม่ก่อนวันนี้ ระยะไม่เกิน 365 วัน | CHECK target_minutes > 0, end_date ≥ start_date | DB ทำแล้ว, API แผน (F-04) |
-| BR-05 สถานะเป้าหมาย / 1 active ต่อแม่แบบ | คำนวณ ended จากวันที่ ปฏิเสธ entry หลังสิ้นสุด | partial unique index `uq_goals_active` | DB ทำแล้ว, API แผน (F-04/F-05) |
-| BR-06 ความคืบหน้า | คำนวณตอนอ่าน (ไม่เก็บซ้ำ) ปัด 1 ตำแหน่ง แสดงสูงสุด 100% | – | แผน (F-06) |
+| BR-01 1 entry ต่อวัน (รวม NFR-05 คำขอพร้อมกัน) | ตรวจก่อนบันทึก และแปลง error 23505 เป็น 409/400 | `UNIQUE(goal_id, entry_date)` | DB และ API ทำแล้ว (F-05, PR #10) |
+| BR-02 ช่วงค่า entry | ตรวจจำนวนเต็ม อยู่ในช่วงของแม่แบบ | CHECK minutes 1–960, template min ≥ 1 และ max ≤ 960 | DB และ API ทำแล้ว (F-03, F-05) |
+| BR-03 ช่วงวันที่ของ entry | ตรวจในช่วงเป้าหมาย ไม่อนาคต ย้อนหลังไม่เกิน 7 วัน | ไม่มี (ขึ้นกับวันปัจจุบัน) | ทำแล้ว (F-05, PR #10) |
+| BR-04 เงื่อนไขเป้าหมาย | ยอดเป็นจำนวนเต็มบวก วันเริ่มไม่ก่อนวันนี้ ระยะไม่เกิน 365 วัน | CHECK target_minutes > 0, end_date ≥ start_date | DB และ API ทำแล้ว (F-04, PR #9) |
+| BR-05 สถานะเป้าหมาย / 1 active ต่อแม่แบบ | คำนวณ ended จากวันที่ ปฏิเสธ entry หลังสิ้นสุด | partial unique index `uq_goals_active` | DB และ API ทำแล้ว (F-04, F-05) |
+| BR-06 ความคืบหน้า | คำนวณตอนอ่าน (ไม่เก็บซ้ำ) ปัด 1 ตำแหน่ง แสดงสูงสุด 100% | – | ทำแล้ว (F-06, PR #10) |
 | BR-07 เฉพาะ PM จัดการแม่แบบ | `requireRole('pm')` | – | middleware ทำแล้ว, ใช้จริงใน F-03 |
 | BR-08 ข้อมูลเป็นของเจ้าของ | `requireRole('participant')` + `ownedBy` / query กรองตามผู้ใช้ | entry ไม่เก็บ `user_id` ซ้ำ ผูกผ่าน `goals.user_id` | middleware ทำแล้ว, ใช้จริงใน F-04 ถึง F-06 |
 | BR-09 หน่วยคงที่ | ไม่รับการแก้หน่วย | `unit` default `minutes` | DB ทำแล้ว |
@@ -111,26 +111,27 @@ session, schema_migrations       ตารางระบบ (ไม่มี FK
 - ไม่มี `ON DELETE CASCADE`: ลบ goal ที่มี entry ไม่ได้ เพื่อกันประวัติหายเงียบๆ
 
 ### 2.3 เวลาและวันที่
-ใช้ปฏิทิน Asia/Bangkok (A-02) เก็บวันที่เป็นชนิด `DATE` กฎเรื่อง "วันนี้" คำนวณจากเวลาเซิร์ฟเวอร์ (`TZ=Asia/Bangkok`) **แผนสำหรับ F-04/F-05:** ตั้ง type parser ของ `pg` ให้คืนค่า `DATE` เป็นสตริง `YYYY-MM-DD` เพื่อเลี่ยงการเลื่อนวันจากเขตเวลา (ทำแล้วใน `db.js` พร้อม F-04, PR #9)
+ใช้ปฏิทิน Asia/Bangkok (A-02) เก็บวันที่เป็นชนิด `DATE` กฎเรื่อง "วันนี้" คำนวณจากเวลาเซิร์ฟเวอร์ (`TZ=Asia/Bangkok`) **ทำใน F-04:** ตั้ง type parser ของ `pg` ให้คืนค่า `DATE` เป็นสตริง `YYYY-MM-DD` เพื่อเลี่ยงการเลื่อนวันจากเขตเวลา (ทำแล้วใน `db.js` พร้อม F-04, PR #9)
 
 ### 2.4 Setup ฐานข้อมูล (ทำแล้ว)
 - **Migration:** `npm run migrate` อ่าน `src/db/migrations/*.sql` ตามลำดับ บันทึกใน `schema_migrations` รันซ้ำได้ (ข้ามไฟล์ที่ apply แล้ว) แต่ละไฟล์อยู่ใน transaction
 - **Seed:** `npm run seed` ทำซ้ำได้ (upsert): PM 1 คน (`pm_alice`), Participant 2 คน (`participant_bob`, `participant_carol`), แม่แบบ "Reading Practice" 1 รายการ, เป้าหมาย active ของ Participant ทั้งสองพร้อม entry ตัวอย่าง 3 วัน รหัสผ่านเป็นค่าสังเคราะห์ เก็บเป็น bcrypt hash
 
-## 3. UI (แผน — issue #6 และ issue ของแต่ละ feature)
+## 3. UI (ทำแล้ว — UI-01, issue #6, PR #11)
 
 ### 3.1 หน้าจอหลักและ navigation
 
 | เส้นทาง | บทบาท | เนื้อหา | Feature |
 |---|---|---|---|
 | `/login` | สาธารณะ | ฟอร์ม username/password | UI-01 |
-| `/templates` (PM) | PM | รายการแม่แบบของตน + ฟอร์มสร้าง | F-03 |
-| `/templates` (Participant) | Participant | รายการแม่แบบที่ใช้ได้ | F-03 |
-| `/goals` | Participant | รายการเป้าหมายของตน + ฟอร์มตั้งเป้าจากแม่แบบ | F-04 |
+| `/dashboard` | ทุกบทบาทที่ login | ข้อมูลผู้ใช้ + ปุ่มลัดตามบทบาท | UI-01 |
+| `/templates` | PM | รายการแม่แบบของตน + ฟอร์มสร้าง | F-03 |
+| `/goals` | Participant | รายการเป้าหมายของตน + ฟอร์มตั้งเป้าจากแม่แบบ (เลือกแม่แบบที่ใช้ได้ในฟอร์มนี้) | F-04 |
 | `/goals/:id` | Participant (เจ้าของ) | ความคืบหน้า (ยอดรวม %) ประวัติ entry (ใหม่ → เก่า) ฟอร์มบันทึกรายวัน | F-05, F-06 |
+| `/unauthorized` | ที่ login แล้ว | หน้า 403 เมื่อ role เข้า route นั้นไม่ได้ | UI-01 |
 
-- โครงหน้า (AppShell) มีชื่อ/บทบาทผู้ใช้ ปุ่ม logout และเมนูตามบทบาท (PM เห็นแม่แบบ, Participant เห็นแม่แบบและเป้าหมาย) หลัง login ไปหน้าเริ่มต้นตามบทบาท
-- route guard: ยังไม่มี session หรือได้ 401 → กลับ `/login`
+- โครงหน้า (Navbar) มีชื่อ/บทบาทผู้ใช้ ปุ่ม logout และเมนูตามบทบาท (PM เห็น Templates, Participant เห็น My Goals) หลัง login ไป `/dashboard` หรือหน้าที่ตั้งใจเข้าถ้า role เข้าได้
+- route guard: ยังไม่มี session หรือได้ 401 → กลับ `/login`; role ไม่ตรง → `/unauthorized` ตารางสิทธิ์ของ route อยู่ที่ `frontend/src/config/routes.js`
 - **ความเตือน:** เมนูตามบทบาทเป็นเพียงความสะดวกในการใช้งาน การบังคับสิทธิ์จริงอยู่ที่ backend (§5)
 
 ### 3.2 พฤติกรรมร่วมของทุกหน้า
@@ -162,12 +163,11 @@ session, schema_migrations       ตารางระบบ (ไม่มี FK
 | `POST /api/goals` | Participant | F-04 | ทำแล้ว (PR #9) |
 | `GET /api/goals` | Participant (ของตน) | F-04 | ทำแล้ว (PR #9) |
 | `GET /api/goals/:id` | Participant (เจ้าของ) | F-04 | ทำแล้ว (PR #9) |
-| `POST /api/goals/:id/entries` | Participant (เจ้าของ) | F-05 | แผน |
-| `GET /api/goals/:id/entries` | Participant (เจ้าของ) | F-06 | แผน |
-| `GET /api/goals/:id/progress` | Participant (เจ้าของ) | F-06 | แผน |
+| `POST /api/goals/:id/entries` | Participant (เจ้าของ) | F-05 | ทำแล้ว (PR #10) |
+| `GET /api/goals/:id/entries` | Participant (เจ้าของ) | F-06 | ทำแล้ว (PR #10) |
+| `GET /api/goals/:id/progress` | Participant (เจ้าของ) | F-06 | ทำแล้ว (PR #10) |
 
-endpoint F-03/F-04 ทำแล้วตาม `docs/sprints/sprint-1/F-03-F-04-templates-goals.md` (รอ merge PR #9)
-ตาราง "แผน" เป็นร่าง รูปแบบ request/response และรหัสสถานะที่แน่นอนกำหนดใน contract ของ feature นั้นก่อน implement endpoint ของ F-01 ใช้ตาม `docs/sprints/sprint-1/F-01-F-02-auth-rbac.md`
+endpoint ทั้ง 11 ตัวทำแล้ว รูปแบบ request/response และรหัสสถานะที่แน่นอนอยู่ใน contract ของแต่ละ feature: `docs/sprints/sprint-1/F-01-F-02-auth-rbac.md`, `F-03-F-04-templates-goals.md`, `F-05-F-06-entry-progress.md`
 
 ### 4.3 รูปแบบ error ที่ปลอดภัย (NFR-06) — ทำแล้ว
 ทุก error ตอบ `{ "error": "<ข้อความคงที่ตามสถานะ>" }` เท่านั้น: 400 `Bad Request`, 401 `Unauthorized`, 403 `Forbidden`, 404 `Not Found`, 5xx `Internal Server Error` (login ผิดใช้ `Invalid username or password`)
@@ -232,7 +232,7 @@ endpoint F-03/F-04 ทำแล้วตาม `docs/sprints/sprint-1/F-03-F-04-
 - ข้อมูลทั้งหมดเป็นข้อมูลสังเคราะห์ (A-03) รหัสผ่านของบัญชี seed ส่งผ่านช่องทางส่วนตัวของวิชา
 
 ### 7.3 การรันในเครื่อง
-`backend`: `npm install` → ตั้ง `.env` → `npm run migrate` → `npm run seed` → `npm run dev` (ดูรายละเอียดใน README) `frontend` (แผน): Vite dev server ตั้ง proxy `/api` ไป `http://localhost:3000`
+`backend`: `npm install` → ตั้ง `.env` → `npm run migrate` → `npm run seed` → `npm run dev` (ดูรายละเอียดใน README) `frontend`: `npm install` → `npm run dev` (Vite) ตั้ง proxy `/api` ไป `http://localhost:3000`
 
 ### 7.4 แผน Docker และ GCP (NFR-10, Lab 5 — **ยังไม่ได้ทำ**)
 
@@ -255,7 +255,7 @@ endpoint F-03/F-04 ทำแล้วตาม `docs/sprints/sprint-1/F-03-F-04-
 |---|---|---|
 | G-1 | SRS §8 ระบุแม่แบบ seed 2 รายการ แต่ `seed.js` สร้างแม่แบบ "Reading Practice" 1 รายการ | ปรับ seed ให้มี 2 รายการ หรือปรับ SRS (บันทึกเป็นการเปลี่ยนที่มีเหตุผล) |
 | G-2 | seed สร้างเป้าหมายที่เริ่มย้อนหลัง 7 วันเพื่อโชว์ประวัติ ซึ่งขัด BR-04 (วันเริ่มต้องไม่ก่อนวันนี้) ถ้านับเป็นข้อมูลปกติ | BR-04 บังคับที่ชั้น API ตอนสร้าง ไม่ใช่ที่ DB และ seed ข้าม API จึงสร้างได้ ควรบันทึกใน contract หรือปรับ BR-04 ตาม Q-02 ของ SRS |
-| G-3 | ยังไม่มี `trust proxy`, type parser ของ DATE, และ E2E | ทำใน Lab 5 / F-04 / contract ของ UI ตามที่ระบุข้างต้น |
+| G-3 | ยังไม่มี `trust proxy` (ทำใน Lab 5) และ E2E อัตโนมัติ (เทสต์ journey ของ UI ใช้ mock API; ยืนยันกับ backend จริงด้วยการกดทดสอบมือ) ส่วน type parser ของ DATE ทำแล้วใน F-04 | Lab 5 / Sprint 2 |
 | G-4 | `seed.js` hash รหัสผ่านและเขียนทับทุกครั้งที่รัน (ข้อเสนอจาก review PR #7) | ติดตามเป็น issue แยก ไม่บล็อก Deliverable 1 |
 
 ## 9. ประวัติการแก้ไข
@@ -264,3 +264,4 @@ endpoint F-03/F-04 ทำแล้วตาม `docs/sprints/sprint-1/F-03-F-04-
 |---|---|---|---|
 | 0.0 | 2026-11-02 | โครงเปล่า | เริ่มทำ |
 | 0.1 | 2026-11-07 | เขียนครบ §1–§8 จาก schema, contract F-01/F-02, F-07/F-08 ที่ merge แล้ว และ SRS v0.2 | ส่ง Deliverable 1 |
+| 0.2 | 2026-11-07 | ปรับสถานะให้ตรงโค้ดหลัง merge F-03–F-06 และ UI-01 (PR #9, #10, #11): endpoint ทั้งหมด, หน้าจอ, โครงโค้ด, ข้อจำกัดเรื่อง E2E | ให้เอกสารตรงกับ `sprint-1-staging` |
