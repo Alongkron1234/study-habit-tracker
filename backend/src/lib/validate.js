@@ -1,5 +1,5 @@
 /**
- * validate.js — ตรวจข้อมูลแม่แบบ/เป้าหมาย (ฟังก์ชันบริสุทธิ์) ตาม contract F-03/F-04
+ * validate.js — ตรวจข้อมูลแม่แบบ/เป้าหมาย/entry (ฟังก์ชันบริสุทธิ์) ตาม contract F-03/F-04/F-05
  * คืน { ok: boolean, fields: { [ชื่อฟิลด์]: ข้อความคงที่ } } (S-10: ข้อความมาจากรายการคงที่)
  */
 const { isValidDate, daysInclusive } = require('./dates');
@@ -38,4 +38,40 @@ function validateGoal(body, today) {
   return { ok: Object.keys(fields).length === 0, fields };
 }
 
-module.exports = { validateTemplate, validateGoal };
+/**
+ * validateEntry — ตรวจข้อมูล entry ตาม contract F-05 (S-3, S-9)
+ * @param {object} body    — req.body
+ * @param {object} goal    — { start_date, end_date } (YYYY-MM-DD strings)
+ * @param {object} template — { min_value, max_value }
+ * @param {string} today   — วันนี้แบบ YYYY-MM-DD (Asia/Bangkok) จาก todayBangkok()
+ * @returns {{ ok: boolean, fields: object }}
+ */
+function validateEntry(body, goal, template, today) {
+  const b = body || {};
+  const fields = {};
+
+  // --- minutes (S-3, BR-02) ---
+  if (!isInt(b.minutes)) {
+    fields.minutes = 'integer required';
+  } else if (b.minutes < template.min_value || b.minutes > template.max_value) {
+    fields.minutes = 'out of template range';
+  }
+
+  // --- entry_date (S-9, BR-03) ---
+  if (!isValidDate(b.entry_date)) {
+    fields.entry_date = 'date YYYY-MM-DD';
+  } else if (b.entry_date > today) {
+    fields.entry_date = 'must not be in the future';
+  } else if (daysInclusive(b.entry_date, today) > 8) {
+    // daysInclusive(d, today) = ระยะห่างเป็นวัน + 1
+    // today − 7 วัน: daysInclusive = 8 → ผ่าน (≤ 8)
+    // today − 8 วัน: daysInclusive = 9 → ไม่ผ่าน (> 8)
+    fields.entry_date = 'must be within last 7 days';
+  } else if (b.entry_date < goal.start_date || b.entry_date > goal.end_date) {
+    fields.entry_date = 'must be within goal period';
+  }
+
+  return { ok: Object.keys(fields).length === 0, fields };
+}
+
+module.exports = { validateTemplate, validateGoal, validateEntry };
