@@ -5,12 +5,17 @@
  * ผู้เรียกต้องโหลด environment (dotenv) ก่อน require ไฟล์นี้
  *
  * Requirements: NFR-06 (safe error responses), NFR-07, NFR-08 (no secrets)
+ * Lab 5 R-03: Express serves built React SPA from /app/frontend/dist (production)
  */
+const path      = require('path');
 const express   = require('express');
 const session   = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const pool      = require('./db/db');
 const { notFound, errorHandler } = require('./middleware/errors');
+
+// Path ที่ Dockerfile วาง built React SPA ไว้ (ใช้เฉพาะ production container)
+const SPA_DIR = path.resolve(__dirname, '../../frontend/dist');
 
 /**
  * @param {object} [options]
@@ -70,6 +75,20 @@ function createApp(options = {}) {
 
   if (typeof options.mountRoutes === 'function') {
     options.mountRoutes(app);
+  }
+
+  // ─── Static SPA (production เท่านั้น — Lab 5 R-03) ──────────────
+  // เสิร์ฟ built React SPA ที่ Dockerfile วางไว้ที่ /app/frontend/dist
+  // ต้องอยู่หลัง /api routes ทั้งหมดเสมอ
+  if (process.env.NODE_ENV === 'production') {
+    const fs = require('fs');
+    if (fs.existsSync(SPA_DIR)) {
+      app.use(express.static(SPA_DIR));
+      // SPA fallback: ทุก route ที่ไม่ใช่ /api ให้ส่ง index.html
+      app.get('*', (_req, res) => {
+        res.sendFile(path.join(SPA_DIR, 'index.html'));
+      });
+    }
   }
 
   // ─── 404 และ error handler (NFR-06 — รูปแบบ error ที่ปลอดภัย) ──

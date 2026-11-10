@@ -1,0 +1,81 @@
+# Study Habit Tracker — docker-compose.yml
+# ใช้สำหรับรันในเครื่องแบบ production-like (Episode 3)
+#
+# Services:
+#   db      — PostgreSQL 16 (data เก็บใน volume postgres_data)
+#   migrate — รัน migrations + seed ครั้งเดียวแล้วหยุด
+#   app     — Express server เสิร์ฟ API + built React SPA บน port 3000
+#
+# วิธีใช้:
+#   docker compose up --build -d
+#   open http://localhost:3000
+#
+# วิธีหยุด (data ยังอยู่):
+#   docker compose down
+#
+# วิธีหยุดและลบ data:
+#   docker compose down -v
+#
+# Ref: docs/labs/lab-05/deployment.md
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: studyhabit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-studyhabit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studyhabit}
+      POSTGRES_DB: ${POSTGRES_DB:-studyhabit}
+    ports:
+      - "5433:5432"   # host 5433 → container 5432 (5432 ถูกใช้โดย PostgreSQL local)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-studyhabit} -d ${POSTGRES_DB:-studyhabit}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: studyhabit:local
+    container_name: studyhabit-migrate
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-studyhabit}:${POSTGRES_PASSWORD:-studyhabit}@db:5432/${POSTGRES_DB:-studyhabit}
+      SESSION_SECRET: ${SESSION_SECRET:-local-dev-secret-change-me}
+      TZ: Asia/Bangkok
+    command: ["sh", "-c", "node src/db/migrate.js && node src/db/seeds/seed.js"]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: studyhabit:local
+    container_name: studyhabit-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-studyhabit}:${POSTGRES_PASSWORD:-studyhabit}@db:5432/${POSTGRES_DB:-studyhabit}
+      SESSION_SECRET: ${SESSION_SECRET:-local-dev-secret-change-me}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
+      TZ: Asia/Bangkok
+    ports:
+      - "3002:3000"   # host 3002 → container 3000 (3000/3001 ถูกใช้อยู่)
+
+volumes:
+  postgres_data:
+
