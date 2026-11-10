@@ -14,7 +14,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const { createApp } = require('./app');
 
-const PORT = process.env.PORT || process.env.APP_PORT || 3000;
+const PORT = process.env.APP_PORT || 3000;
 
 let app;
 try {

@@ -52,16 +52,6 @@ function createApp(options = {}) {
     }
   });
 
-  // Ready check for Cloud Run & smoke tests (Lab 5 Episode 2)
-  app.get('/api/ready', async (_req, res) => {
-    try {
-      await pool.query('SELECT 1');
-      res.json({ status: 'ready', db: 'connected' });
-    } catch {
-      res.status(503).json({ status: 'not_ready' });
-    }
-  });
-
   // ─── Feature routers ───────────────────────────────────────────
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/templates', require('./routes/templates'));
