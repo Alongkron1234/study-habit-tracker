@@ -30,4 +30,6 @@
 | `SESSION_SECRET` | Session cookie encryption secret | Yes | Secret Manager (`studyhabit-session-secret`) / `.env` | `random-strong-secret` |
 | `SESSION_TTL_HOURS` | Session expiry time in hours | No | Plain env in Cloud Run / `.env` | `8` |
 | `COOKIE_SECURE` | Session cookie `Secure` flag (needs HTTPS or trust proxy) | No | Plain env: `true` in Cloud Run, `false` in docker compose | `true` |
+| `RUN_SEED` | Run demo seed at container start (production entrypoint). Never `true` on the real database | No (default `false`) | Plain env; docker compose sets `true` on `migrate` only | `false` |
+| `DB_PORT` / `APP_PORT` | Host ports published by docker compose (defaults 5433 / 3002) | No | `.env` (local only) | `5433` |
 | `TZ` | System timezone | No | Plain env in Cloud Run | `Asia/Bangkok` |

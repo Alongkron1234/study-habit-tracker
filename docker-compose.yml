@@ -28,7 +28,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-studyhabit}
       POSTGRES_DB: ${POSTGRES_DB:-studyhabit}
     ports:
-      - "5433:5432"   # host 5433 → container 5432 (5432 ถูกใช้โดย PostgreSQL local)
+      - "${DB_PORT:-5433}:5432"   # host DB_PORT → container 5432 (5432 มักถูกใช้โดย PostgreSQL local)
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -51,8 +51,10 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-studyhabit}:${POSTGRES_PASSWORD:-studyhabit}@db:5432/${POSTGRES_DB:-studyhabit}
       SESSION_SECRET: ${SESSION_SECRET:-local-dev-secret-change-me}
+      # entrypoint รัน migrate + seed ให้แล้ว (seed เฉพาะ RUN_SEED=true) จึงไม่ต้องรันซ้ำใน command
+      RUN_SEED: ${RUN_SEED:-true}
       TZ: Asia/Bangkok
-    command: ["sh", "-c", "node src/db/migrate.js && node src/db/seeds/seed.js"]
+    command: ["true"]
 
   app:
     build:
@@ -74,9 +76,10 @@ services:
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
       # compose เสิร์ฟ http ตรงๆ → ปิด secure cookie (Cloud Run ตั้งเป็น true)
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      RUN_SEED: "false"   # seed ทำโดย service migrate เท่านั้น
       TZ: Asia/Bangkok
     ports:
-      - "3002:3000"   # host 3002 → container 3000 (3000/3001 ถูกใช้อยู่)
+      - "${APP_PORT:-3002}:3000"   # host APP_PORT → container 3000
 
 volumes:
   postgres_data:
