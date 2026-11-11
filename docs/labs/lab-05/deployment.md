@@ -29,4 +29,5 @@
 | `DATABASE_URL` | PostgreSQL connection string | Yes | Secret Manager (`studyhabit-database-url`) / `.env` | `postgresql://user:pass@/dbname?host=/cloudsql/...` |
 | `SESSION_SECRET` | Session cookie encryption secret | Yes | Secret Manager (`studyhabit-session-secret`) / `.env` | `random-strong-secret` |
 | `SESSION_TTL_HOURS` | Session expiry time in hours | No | Plain env in Cloud Run / `.env` | `8` |
+| `COOKIE_SECURE` | Session cookie `Secure` flag (needs HTTPS or trust proxy) | No | Plain env: `true` in Cloud Run, `false` in docker compose | `true` |
 | `TZ` | System timezone | No | Plain env in Cloud Run | `Asia/Bangkok` |

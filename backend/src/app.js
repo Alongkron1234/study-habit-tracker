@@ -30,6 +30,17 @@ function createApp(options = {}) {
 
   const app = express();
 
+  // Cloud Run / reverse proxy ทำ TLS termination → เชื่อ X-Forwarded-Proto
+  // เพื่อให้ express-session ส่ง cookie ที่เป็น secure ได้
+  app.set('trust proxy', 1);
+
+  // COOKIE_SECURE ควบคุม flag secure ของ cookie (ตั้ง true บน Cloud Run/HTTPS,
+  // false เมื่อรัน docker compose ผ่าน http://localhost)
+  // ค่าเริ่มต้น: true เฉพาะ production เพื่อคงพฤติกรรมเดิม
+  const cookieSecure = process.env.COOKIE_SECURE !== undefined
+    ? process.env.COOKIE_SECURE === 'true'
+    : process.env.NODE_ENV === 'production';
+
   // ─── Middleware ────────────────────────────────────────────────
   app.use(express.json());
 
@@ -42,7 +53,7 @@ function createApp(options = {}) {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: cookieSecure,
       maxAge: (parseInt(process.env.SESSION_TTL_HOURS, 10) || 8) * 60 * 60 * 1000,
     },
   }));
@@ -85,7 +96,9 @@ function createApp(options = {}) {
     if (fs.existsSync(SPA_DIR)) {
       app.use(express.static(SPA_DIR));
       // SPA fallback: ทุก route ที่ไม่ใช่ /api ให้ส่ง index.html
-      app.get('*', (_req, res) => {
+      // /api/* ที่ไม่มีอยู่ต้องตกไปที่ notFound (JSON 404 — NFR-06) ไม่ใช่ HTML
+      app.get('*', (req, res, next) => {
+        if (req.path === '/api' || req.path.startsWith('/api/')) return next();
         res.sendFile(path.join(SPA_DIR, 'index.html'));
       });
     }
