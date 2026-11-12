@@ -40,7 +40,7 @@ name: CI & Docker Build
 on:
   workflow_call:
   pull_request:
-    branches: [main]
+    branches: [main, sprint-1-staging]
   workflow_dispatch:
 
 # Least privilege: this workflow only needs to read the repository.
@@ -66,9 +66,9 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: toktickit
-          POSTGRES_PASSWORD: toktickit
-          POSTGRES_DB: toktickit
+          POSTGRES_USER: studyhabit
+          POSTGRES_PASSWORD: studyhabit
+          POSTGRES_DB: study_habit_test
         ports:
           - 5432:5432
         # Wait until the DB is healthy before the steps start.
@@ -93,10 +93,10 @@ jobs:
       # 2. Language runtimes
       #    CHANGE ME: replace with the runtime(s) your stack needs.
       # ------------------------------------------------------------------------
-      - name: Setup Node.js 24
+      - name: Setup Node.js 20
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "24"
+          node-version: "20"
 
       # Python is only needed for the deploy smoke-test unit tests below.
       - name: Setup Python 3.14
@@ -122,14 +122,16 @@ jobs:
       #    ⭐ IMPORTANT: a failing test fails the job (and therefore the deploy).
       #    CHANGE ME: working-directory, DATABASE_URL and every command in `run:`.
       # ------------------------------------------------------------------------
-      - name: Install & Test Backend (Prisma Migrate + Seed + Vitest)
-        working-directory: ./server
+      - name: Install & Test Backend (migrate + Jest)
+        working-directory: ./backend
         env:
-          DATABASE_URL: postgresql://toktickit:toktickit@localhost:5432/toktickit?schema=public
+          # Throw-away CI database, not a real secret. The tests refuse to run
+          # without TEST_DATABASE_URL; migrate.js reads DATABASE_URL.
+          DATABASE_URL: postgresql://studyhabit:studyhabit@localhost:5432/study_habit_test
+          TEST_DATABASE_URL: postgresql://studyhabit:studyhabit@localhost:5432/study_habit_test
         run: |
           npm ci
-          npx prisma migrate deploy
-          npm run prisma:seed
+          npm run migrate
           npm test
 
       # ------------------------------------------------------------------------
@@ -137,7 +139,7 @@ jobs:
       #    CHANGE ME: remove or replace if there is no separate frontend.
       # ------------------------------------------------------------------------
       - name: Install, Test & Build Frontend (Vitest + Production Build)
-        working-directory: ./client
+        working-directory: ./frontend
         run: |
           npm ci
           npm test
@@ -149,4 +151,4 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Verify Unified Production Dockerfile Build
         run: |
-          docker build -t toktickit-lab4:latest .
+          docker build -t study-habit-tracker:ci .
