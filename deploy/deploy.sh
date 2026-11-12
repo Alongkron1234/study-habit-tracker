@@ -15,8 +15,9 @@ set -euo pipefail
 # WHAT THIS SCRIPT DOES  (one-time / manual first setup; safe to re-run)
 #   Creates every cloud resource the app needs and does the first deployment:
 #   1 enable APIs     2 Artifact Registry  3 Cloud SQL instance  4 database
-#   5 runtime SA+IAM  6 DB user + secret   7 session secret     (secret access)
-#   9 build image     10 migrate job       11 Cloud Run service
+#   5 runtime SA+IAM  6 DB user + secret   7 session + first-user secrets
+#   (secret access)   9 build image        10 migrate job + first-user job
+#   11 Cloud Run service
 #   No demo/seed data is ever loaded in the cloud (demo passwords are public).
 #   After this, routine releases are done by GitHub Actions (deploy.yml ->
 #   deploy/release.sh), which only UPDATES these resources.
@@ -103,6 +104,13 @@ IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:l
 # Secret Manager secret names (values are never stored in this repo).
 SECRET_DB_URL="study-habit-database-url"
 SECRET_SESSION="study-habit-session-secret"
+SECRET_ADMIN_PASS="study-habit-admin-password"
+
+# First application user (the app has no sign-up page and the cloud DB is not
+# seeded, so this job creates one PM account; see step 10b).
+CREATE_USER_JOB_NAME="study-habit-create-user"
+FIRST_USERNAME="admin_pm"
+FIRST_EMAIL="admin@study-habit.example"
 
 echo "=================================================================="
 echo "Study Habit Tracker Cloud Run Deployment"
@@ -243,13 +251,29 @@ else
   fi
 fi
 
+# ==============================================================================
+# 7b. Create the first user's password in Secret Manager (only if missing)
+#     Read it later with: gcloud secrets versions access latest --secret=<name>
+# ==============================================================================
+if [ "$DRY_RUN" = "1" ]; then
+  run_cmd gcloud secrets describe "$SECRET_ADMIN_PASS" --project "$PROJECT_ID"
+  run_cmd gcloud secrets create "$SECRET_ADMIN_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
+  run_cmd gcloud secrets versions add "$SECRET_ADMIN_PASS" --data-file=- --project "$PROJECT_ID"
+else
+  if ! gcloud secrets describe "$SECRET_ADMIN_PASS" --project "$PROJECT_ID" >/dev/null 2>&1; then
+    GENERATED_ADMIN_PASSWORD="$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-20)Aa1!"
+    run_cmd gcloud secrets create "$SECRET_ADMIN_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
+    printf "%s" "$GENERATED_ADMIN_PASSWORD" | gcloud secrets versions add "$SECRET_ADMIN_PASS" --data-file=- --project "$PROJECT_ID"
+  fi
+fi
+
 # ------------------------------------------------------------------------------
 # Secret access (per secret, NOT project-wide)
 # ⭐ IMPORTANT: test_deploy_stub.sh fails if a project-wide secretAccessor
 #    binding is added — keep access limited to this app's own secrets.
 # ------------------------------------------------------------------------------
 # Grant access only to this app's secrets, after they exist.
-RUNTIME_SECRETS=("$SECRET_DB_URL" "$SECRET_SESSION")
+RUNTIME_SECRETS=("$SECRET_DB_URL" "$SECRET_SESSION" "$SECRET_ADMIN_PASS")
 for secret in "${RUNTIME_SECRETS[@]}"; do
   run_cmd gcloud secrets add-iam-policy-binding "$secret" \
     --member="serviceAccount:${SA_EMAIL}" \
@@ -299,6 +323,38 @@ if ! run_cmd gcloud run jobs execute "$MIGRATE_JOB_NAME" \
 fi
 
 # ==============================================================================
+# 10b. Create the first user (PM) with a Cloud Run job
+#      The app has no sign-up page and the cloud DB is NOT seeded, so without
+#      this nobody could log in. The password comes from Secret Manager
+#      (never printed). The script is idempotent: an existing user is kept as
+#      is, so re-running never resets a password.
+#      Add more users later with:
+#        gcloud run jobs execute study-habit-create-user --region <region> --wait \
+#          --update-env-vars USER_USERNAME=<name>,USER_EMAIL=<email>,USER_ROLE=participant
+#      (they share the admin password secret; change it in the DB if needed).
+# ==============================================================================
+run_cmd gcloud run jobs deploy "$CREATE_USER_JOB_NAME" \
+  --image "$IMAGE_URI" \
+  --region "$REGION" \
+  --service-account "$SA_EMAIL" \
+  --set-cloudsql-instances "$SQL_CONN_NAME" \
+  --set-secrets "DATABASE_URL=${SECRET_DB_URL}:latest,USER_PASSWORD=${SECRET_ADMIN_PASS}:latest" \
+  --set-env-vars "NODE_ENV=production,USER_USERNAME=${FIRST_USERNAME},USER_EMAIL=${FIRST_EMAIL},USER_ROLE=pm" \
+  --command "node" \
+  --args "src/db/create-user.js" \
+  --max-retries 0 \
+  --task-timeout 120s \
+  --project "$PROJECT_ID"
+
+if ! run_cmd gcloud run jobs execute "$CREATE_USER_JOB_NAME" \
+  --region "$REGION" \
+  --wait \
+  --project "$PROJECT_ID"; then
+  printf '%s\n' "ERROR: Cloud Run job '${CREATE_USER_JOB_NAME}' failed. Aborting service deployment." >&2
+  exit 1
+fi
+
+# ==============================================================================
 # 11. Deploy Cloud Run Service
 #     --port must equal the port in the Dockerfile (3000).
 #     NODE_ENV=production makes cookies Secure (Cloud Run serves HTTPS) and the
@@ -339,6 +395,6 @@ printf '%s\n' "Deployment Completed!"
 printf '%s\n' "Service URL    : ${SERVICE_URL}"
 printf '%s\n' "Health Check   : ${SERVICE_URL}/health"
 printf '%s\n' "Readiness Check: ${SERVICE_URL}/api/ready"
-printf '%s\n' "Secrets        : ${SECRET_DB_URL}, ${SECRET_SESSION} (in Secret Manager, not printed)."
-printf '%s\n' "Users          : none yet — the database is empty (no demo seed in the cloud)."
+printf '%s\n' "Secrets        : ${SECRET_DB_URL}, ${SECRET_SESSION}, ${SECRET_ADMIN_PASS} (in Secret Manager, not printed)."
+printf '%s\n' "Login          : username ${FIRST_USERNAME} (role pm); password in Secret Manager: ${SECRET_ADMIN_PASS}"
 printf '%s\n' "=================================================================="

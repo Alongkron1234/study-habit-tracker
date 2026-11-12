@@ -115,7 +115,7 @@ for MODE in first_run rerun partial job-fail; do
   if grep -q '^projects add-iam-policy-binding .*roles/secretmanager.secretAccessor' "$GCLOUD_LOG"; then
     echo 'FAIL: runtime has project-wide secret access'; exit 1
   fi
-  for secret in study-habit-database-url study-habit-session-secret; do
+  for secret in study-habit-database-url study-habit-session-secret study-habit-admin-password; do
     grep -q "^secrets add-iam-policy-binding $secret .*roles/secretmanager.secretAccessor" "$GCLOUD_LOG"
   done
   # The migrate job runs migrations only: never the demo seed (public passwords).
@@ -123,6 +123,15 @@ for MODE in first_run rerun partial job-fail; do
   grep -q '^run jobs deploy .*RUN_SEED=false' "$GCLOUD_LOG"
   if grep -Eqi 'seed\.js|prisma|RUN_SEED=true' "$GCLOUD_LOG"; then
     echo 'FAIL: seed or Prisma command in deploy'; exit 1
+  fi
+  # The first-user job exists and gets its password from Secret Manager (not a plain env var).
+  # (after a failed migration the script stops earlier, so only check on success)
+  if [ "$MODE" != job-fail ]; then
+    grep -q '^run jobs deploy study-habit-create-user .*USER_PASSWORD=study-habit-admin-password:latest' "$GCLOUD_LOG"
+    grep -q '^run jobs deploy study-habit-create-user .*--args src/db/create-user.js' "$GCLOUD_LOG"
+  fi
+  if grep -q 'USER_PASSWORD=[^s]' "$GCLOUD_LOG"; then
+    echo 'FAIL: user password passed as plain value'; exit 1
   fi
   # The service needs the session secret (the app refuses to start without it).
   grep -q '^run deploy .*SESSION_SECRET=study-habit-session-secret:latest' "$GCLOUD_LOG" || [ "$MODE" = job-fail ]
