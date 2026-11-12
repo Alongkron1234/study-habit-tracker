@@ -5,12 +5,17 @@
  * ผู้เรียกต้องโหลด environment (dotenv) ก่อน require ไฟล์นี้
  *
  * Requirements: NFR-06 (safe error responses), NFR-07, NFR-08 (no secrets)
+ * Lab 5 R-03: Express serves built React SPA from /app/frontend/dist (production)
  */
+const path      = require('path');
 const express   = require('express');
 const session   = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const pool      = require('./db/db');
 const { notFound, errorHandler } = require('./middleware/errors');
+
+// Path ที่ Dockerfile วาง built React SPA ไว้ (ใช้เฉพาะ production container)
+const SPA_DIR = path.resolve(__dirname, '../../frontend/dist');
 
 /**
  * @param {object} [options]
@@ -25,6 +30,17 @@ function createApp(options = {}) {
 
   const app = express();
 
+  // Cloud Run / reverse proxy ทำ TLS termination → เชื่อ X-Forwarded-Proto
+  // เพื่อให้ express-session ส่ง cookie ที่เป็น secure ได้
+  app.set('trust proxy', 1);
+
+  // COOKIE_SECURE ควบคุม flag secure ของ cookie (ตั้ง true บน Cloud Run/HTTPS,
+  // false เมื่อรัน docker compose ผ่าน http://localhost)
+  // ค่าเริ่มต้น: true เฉพาะ production เพื่อคงพฤติกรรมเดิม
+  const cookieSecure = process.env.COOKIE_SECURE !== undefined
+    ? process.env.COOKIE_SECURE === 'true'
+    : process.env.NODE_ENV === 'production';
+
   // ─── Middleware ────────────────────────────────────────────────
   app.use(express.json());
 
@@ -37,7 +53,7 @@ function createApp(options = {}) {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: cookieSecure,
       maxAge: (parseInt(process.env.SESSION_TTL_HOURS, 10) || 8) * 60 * 60 * 1000,
     },
   }));
@@ -52,6 +68,16 @@ function createApp(options = {}) {
     }
   });
 
+  // Ready check for Cloud Run & smoke tests (Lab 5 Episode 2)
+  app.get('/api/ready', async (_req, res) => {
+    try {
+      await pool.query('SELECT 1');
+      res.json({ status: 'ready', db: 'connected' });
+    } catch {
+      res.status(503).json({ status: 'not_ready' });
+    }
+  });
+
   // ─── Feature routers ───────────────────────────────────────────
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/templates', require('./routes/templates'));
@@ -60,6 +86,22 @@ function createApp(options = {}) {
 
   if (typeof options.mountRoutes === 'function') {
     options.mountRoutes(app);
+  }
+
+  // ─── Static SPA (production เท่านั้น — Lab 5 R-03) ──────────────
+  // เสิร์ฟ built React SPA ที่ Dockerfile วางไว้ที่ /app/frontend/dist
+  // ต้องอยู่หลัง /api routes ทั้งหมดเสมอ
+  if (process.env.NODE_ENV === 'production') {
+    const fs = require('fs');
+    if (fs.existsSync(SPA_DIR)) {
+      app.use(express.static(SPA_DIR));
+      // SPA fallback: ทุก route ที่ไม่ใช่ /api ให้ส่ง index.html
+      // /api/* ที่ไม่มีอยู่ต้องตกไปที่ notFound (JSON 404 — NFR-06) ไม่ใช่ HTML
+      app.get('*', (req, res, next) => {
+        if (req.path === '/api' || req.path.startsWith('/api/')) return next();
+        res.sendFile(path.join(SPA_DIR, 'index.html'));
+      });
+    }
   }
 
   // ─── 404 และ error handler (NFR-06 — รูปแบบ error ที่ปลอดภัย) ──
