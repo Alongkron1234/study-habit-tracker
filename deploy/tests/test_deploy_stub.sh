@@ -8,7 +8,6 @@
 #     rerun     : everything exists   -> nothing replaced (credentials kept)
 #     partial   : DB secret missing   -> DB user password reset + secret created
 #     job-fail  : migration fails     -> script exits 1, service NOT deployed
-#     demo      : --demo flag         -> demo secret is created and granted
 #   It also checks: `--edition=enterprise`, no project-wide secretAccessor role,
 #   DB password == password inside DATABASE_URL, and that no password/secret
 #   value leaks into the output. Finally DRY_RUN=1 must make zero gcloud calls.
@@ -17,9 +16,7 @@
 #   Prints `PASS: <scenario>` per scenario; any `FAIL ...` exits non-zero.
 #   CI runs it too (.github/workflows/ci-docker.yml).
 #
-# ⭐ CHANGE ME: if you rename resources in deploy/deploy.sh (e.g. the secret
-#    names toktickit-database-url / -admin-password / -demo-password, the DB
-#    user `toktickit`), update the matching strings below.
+# NOTE: if you rename resources in deploy/deploy.sh (secret names\n#    study-habit-database-url / study-habit-session-secret, the DB user\n#    `study_habit`), update the matching strings below.
 # ==============================================================================
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -58,7 +55,7 @@ if [ "${1:-} ${2:-}" = 'config get-value' ]; then
   exit 0
 fi
 if [ "${1:-} ${2:-} ${3:-}" = 'run services describe' ]; then
-  echo https://toktickit-stub.example.invalid
+  echo https://study-habit-stub.example.invalid
   exit 0
 fi
 if [ "${1:-} ${2:-} ${3:-}" = 'run jobs execute' ]; then
@@ -73,7 +70,7 @@ if [ "${1:-} ${2:-} ${3:-}" = 'sql users list' ]; then
   if [ "$STUB_MODE" = first_run ]; then
     echo postgres
   else
-    printf 'postgres\ntoktickit\n'
+    printf 'postgres\nstudy_habit\n'
   fi
   exit 0
 fi
@@ -82,7 +79,7 @@ for word in "$@"; do
     case "$STUB_MODE" in
       first_run) exit 1 ;;
       partial)
-        if [ "${1:-} ${3:-}" = 'secrets toktickit-database-url' ]; then
+        if [ "${1:-} ${3:-}" = 'secrets study-habit-database-url' ]; then
           exit 1
         fi ;;
     esac
@@ -96,15 +93,12 @@ export REGION=asia-southeast1
 export DRY_RUN=0
 
 # --- Run every scenario and assert on what deploy.sh did ------------------------
-for MODE in first_run rerun partial job-fail demo; do
+for MODE in first_run rerun partial job-fail; do
   export STUB_MODE="$MODE"
-  [ "$MODE" != demo ] || export STUB_MODE=first_run
   export GCLOUD_LOG="$TEST_STATE_DIR/gcloud-$MODE.log"
   rm -f "$TEST_STATE_DIR/sql-pass" "$TEST_STATE_DIR"/payload-*
-  args=()
-  if [ "$MODE" = demo ]; then args+=(--demo); fi
   result=0
-  bash "$DEPLOY_SCRIPT" "${args[@]}" > "$TEST_STATE_DIR/output" 2>&1 || result=$?
+  bash "$DEPLOY_SCRIPT" > "$TEST_STATE_DIR/output" 2>&1 || result=$?
   expected=0
   if [ "$MODE" = job-fail ]; then expected=1; fi
   if [ "$result" -ne "$expected" ]; then
@@ -121,14 +115,17 @@ for MODE in first_run rerun partial job-fail demo; do
   if grep -q '^projects add-iam-policy-binding .*roles/secretmanager.secretAccessor' "$GCLOUD_LOG"; then
     echo 'FAIL: runtime has project-wide secret access'; exit 1
   fi
-  for secret in toktickit-database-url toktickit-admin-password; do
+  for secret in study-habit-database-url study-habit-session-secret; do
     grep -q "^secrets add-iam-policy-binding $secret .*roles/secretmanager.secretAccessor" "$GCLOUD_LOG"
   done
-  if [ "$MODE" = demo ]; then
-    grep -q '^secrets add-iam-policy-binding toktickit-demo-password ' "$GCLOUD_LOG"
-  elif grep -q '^secrets add-iam-policy-binding toktickit-demo-password ' "$GCLOUD_LOG"; then
-    echo 'FAIL: granted optional demo secret in non-demo mode'; exit 1
+  # The migrate job runs migrations only: never the demo seed (public passwords).
+  grep -q '^run jobs deploy .*--command node .*--args src/db/migrate.js' "$GCLOUD_LOG"
+  grep -q '^run jobs deploy .*RUN_SEED=false' "$GCLOUD_LOG"
+  if grep -Eqi 'seed\.js|prisma|RUN_SEED=true' "$GCLOUD_LOG"; then
+    echo 'FAIL: seed or Prisma command in deploy'; exit 1
   fi
+  # The service needs the session secret (the app refuses to start without it).
+  grep -q '^run deploy .*SESSION_SECRET=study-habit-session-secret:latest' "$GCLOUD_LOG" || [ "$MODE" = job-fail ]
   case "$MODE" in
     first_run)
       grep -q -- '--edition=enterprise' "$GCLOUD_LOG"
@@ -141,9 +138,9 @@ for MODE in first_run rerun partial job-fail demo; do
   esac
   if [ -f "$TEST_STATE_DIR/sql-pass" ]; then
     db_pass="$(cat "$TEST_STATE_DIR/sql-pass")"
-    db_url="$(cat "$TEST_STATE_DIR/payload-toktickit-database-url")"
+    db_url="$(cat "$TEST_STATE_DIR/payload-study-habit-database-url")"
     case "$db_url" in
-      "postgresql://toktickit:${db_pass}@"*) ;;
+      "postgresql://study_habit:${db_pass}@"*) ;;
       *) echo 'FAIL: DB password differs from secret'; exit 1 ;;
     esac
     if grep -Fq "$db_pass" "$TEST_STATE_DIR/output"; then
@@ -161,7 +158,7 @@ for MODE in first_run rerun partial job-fail demo; do
 done
 # --- Dry run must not call gcloud at all ------------------------------------------
 export GCLOUD_LOG="$TEST_STATE_DIR/dry-run-calls"
-DRY_RUN=1 bash "$DEPLOY_SCRIPT" --demo > "$TEST_STATE_DIR/dry-run-output"
+DRY_RUN=1 bash "$DEPLOY_SCRIPT" > "$TEST_STATE_DIR/dry-run-output"
 if [ -f "$GCLOUD_LOG" ]; then
   echo 'FAIL: dry run called gcloud'; exit 1
 fi

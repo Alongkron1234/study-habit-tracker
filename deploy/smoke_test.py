@@ -1,4 +1,4 @@
-"""Public deployment checks. Credentials/tokens are never printed.
+"""Public deployment checks. Credentials/cookies are never printed.
 
 WHAT THIS SCRIPT DOES
     Called by .github/workflows/deploy.yml after a deployment:
@@ -8,27 +8,21 @@ WHAT THIS SCRIPT DOES
     tolerate Cloud Run cold starts.
 
     Checks (in order)
-      1. GET /api/health      -> {"status": "ok"}
-      2. GET /api/ready       -> {"db": "connected"}   (proves the DB works)
-      3. GET /                -> HTML page (the built React app is served)
-      4. GET /api/categories  -> non-empty list (migration + seed worked)
-      5. OPTIONAL login test  -> login, /api/auth/me, logout. Runs only if BOTH
-         env vars SMOKE_EMAIL and SMOKE_PASSWORD are set (set both or neither).
-         The session is always logged out, even if a check fails.
+      1. GET /health              -> {"status": "ok"}
+      2. GET /api/ready           -> {"db": "connected"}   (proves the DB works)
+      3. GET /                    -> HTML page (the built React app is served)
+      4. GET /api/<unknown>       -> JSON 404 (the SPA fallback must not swallow
+                                     /api/* routes — NFR-06)
+      5. OPTIONAL login test      -> login, /api/auth/me, logout (session cookie).
+         Runs only if BOTH env vars SMOKE_USERNAME and SMOKE_PASSWORD are set
+         (set both or neither). The session is always logged out, even if a
+         check fails.
 
 IMPORTANT
     Uses only the Python standard library (no pip install needed).
     Offline unit tests: deploy/tests/test_smoke.py
-
-REFERENCES
-    - urllib.request : https://docs.python.org/3/library/urllib.request.html
-    - unittest.mock  : https://docs.python.org/3/library/unittest.mock.html
-
-CHANGE ME (groups using another tech stack):
-    - the endpoint paths and expected responses in check() below
-      (/api/health, /api/ready, /, /api/categories, /api/auth/*)
-    - the login/logout endpoints and the 'token' field of the login response
 """
+import http.cookiejar
 import json
 import os
 import sys
@@ -38,31 +32,40 @@ import urllib.request
 
 
 # --- HTTP helper --------------------------------------------------------------
-# Returns the response body (bytes). Raises on HTTP errors / timeouts.
-def request(base, path, data=None, token=None):
+# Returns the response body (bytes). Raises on HTTP errors / timeouts, unless
+# allow_error=True (then the body of an HTTP error response is returned).
+# `opener` carries the session cookie (the app uses express-session cookies).
+def request(base, path, data=None, opener=None, allow_error=False):
     headers = {}
     if data is not None:
         headers['Content-Type'] = 'application/json'
-    if token:
-        headers['Authorization'] = 'Bearer ' + token
     req = urllib.request.Request(base + path, headers=headers,
         data=json.dumps(data).encode() if data is not None else None)
-    with urllib.request.urlopen(req, timeout=30) as response:
-        return response.read()
+    open_url = opener.open if opener else urllib.request.urlopen
+    try:
+        with open_url(req, timeout=30) as response:
+            return response.read()
+    except urllib.error.HTTPError as err:
+        if allow_error:
+            return err.read()
+        raise
 
 
 def check(base):
-    # --- Public checks (CHANGE ME: paths + predicates for your own API) -------
-    for path, predicate in (
-        ('/api/health', lambda b: json.loads(b).get('status') == 'ok'),
-        ('/api/ready', lambda b: json.loads(b).get('db') == 'connected'),
-        ('/', lambda b: b'<html' in b.lower()),
-        ('/api/categories', lambda b: isinstance(json.loads(b), list) and len(json.loads(b)) > 0),
+    # --- Public checks: (path, predicate, allow_error) ------------------------
+    for path, predicate, allow_error in (
+        ('/health', lambda b: json.loads(b).get('status') == 'ok', False),
+        ('/api/ready', lambda b: json.loads(b).get('db') == 'connected', False),
+        ('/', lambda b: b'<html' in b.lower(), False),
+        # Unknown /api route must answer JSON (not the SPA's index.html).
+        ('/api/__smoke_not_found__', lambda b: isinstance(json.loads(b), dict), True),
     ):
         # Retry: a cold Cloud Run instance may need a few seconds to start.
         for attempt in range(5):
             try:
-                if not predicate(request(base, path)):
+                body = (request(base, path, allow_error=True) if allow_error
+                        else request(base, path))
+                if not predicate(body):
                     raise ValueError('Unexpected response')
                 break
             except (urllib.error.URLError, TimeoutError, ValueError):
@@ -72,24 +75,29 @@ def check(base):
         print('PASS ' + path)
 
     # --- Optional login check (only when both credentials are provided) -------
-    email, password = os.getenv('SMOKE_EMAIL'), os.getenv('SMOKE_PASSWORD')
-    if bool(email) != bool(password):
-        raise RuntimeError('Set both SMOKE_EMAIL and SMOKE_PASSWORD, or neither.')
-    if not email:
+    username, password = os.getenv('SMOKE_USERNAME'), os.getenv('SMOKE_PASSWORD')
+    if bool(username) != bool(password):
+        raise RuntimeError('Set both SMOKE_USERNAME and SMOKE_PASSWORD, or neither.')
+    if not username:
         print('SKIP login: optional smoke credentials not configured')
         return
-    token = None
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    logged_in = False
     try:
-        login = json.loads(request(base, '/api/auth/login', {'email': email, 'password': password}))
-        token = login['token']
-        request(base, '/api/auth/me', token=token)
+        login = json.loads(request(base, '/api/auth/login', opener=opener,
+                                   data={'username': username, 'password': password}))
+        logged_in = True
+        if login['user']['username'] != username:
+            raise ValueError('Unexpected user')
+        request(base, '/api/auth/me', opener=opener)
         print('PASS login and authenticated /api/auth/me')
     except (urllib.error.URLError, TimeoutError, ValueError, KeyError):
         raise RuntimeError('Login smoke check failed') from None
     finally:
         # Always end the session, even when a check above failed.
-        if token:
-            request(base, '/api/auth/logout', data={}, token=token)
+        if logged_in:
+            request(base, '/api/auth/logout', data={}, opener=opener)
             print('PASS logout')
 
 
