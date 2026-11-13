@@ -57,7 +57,7 @@ The Lab 5 starter kit is written for TokTickIT (Prisma, separate `client/` and `
 
 ## 4. Cloud Resources (Episode 5)
 
-Project `cpe334-toktickit`, region `asia-southeast1`. Created by `deploy/deploy.sh` (idempotent) and removed by `deploy/teardown.sh`.
+Project `cpe334-toktickit` (the project ID was chosen in Episode 1 and cannot be renamed; every resource inside it is named `study-habit-*`), region `asia-southeast1`. Created by `deploy/deploy.sh` (idempotent) and removed by `deploy/teardown.sh`.
 
 | Resource | Name |
 |---|---|
