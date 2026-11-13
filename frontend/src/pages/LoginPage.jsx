@@ -47,7 +47,7 @@ export function LoginPage() {
     <div className="login-container">
       <div className="login-card">
         <h2>Study Habit Tracker</h2>
-        <p className="login-subtitle">Sign in to your account</p>
+        <p className="login-subtitle">Sign in to keep your study streak going</p>
 
         {sessionExpiredMessage && (
           <div className="session-expired-notice" role="alert">
