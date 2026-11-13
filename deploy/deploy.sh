@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # ==============================================================================
-# TokTickIT — Idempotent Google Cloud Run Deployment Script
+# Study Habit Tracker — Idempotent Google Cloud Run Deployment Script
 # ==============================================================================
 # Usage:
-#   ./deploy/deploy.sh [--demo]
+#   ./deploy/deploy.sh
 #
 # Environment Variables (Optional):
 #   PROJECT_ID   GCP Project ID (defaults to active gcloud config project)
@@ -15,16 +15,18 @@ set -euo pipefail
 # WHAT THIS SCRIPT DOES  (one-time / manual first setup; safe to re-run)
 #   Creates every cloud resource the app needs and does the first deployment:
 #   1 enable APIs     2 Artifact Registry  3 Cloud SQL instance  4 database
-#   5 runtime SA+IAM  6 DB user + secret   7 admin password      8 demo password
-#   (secret access)   9 build image        10 migrate+seed job   11 Cloud Run service
+#   5 runtime SA+IAM  6 DB user + secret   7 session secret
+#   8 user passwords (+ per-secret access) 9 build image
+#   10 migrate job + create-user jobs      11 Cloud Run service
+#   No demo/seed data is ever loaded in the cloud (demo passwords are public).
 #   After this, routine releases are done by GitHub Actions (deploy.yml ->
 #   deploy/release.sh), which only UPDATES these resources.
 #
 # ⭐ IMPORTANT
 #   - Idempotent: existing resources/secrets are reused, never overwritten
 #     (a re-run does not replace credentials).
-#   - Passwords are generated with openssl and live only in Secret Manager;
-#     they are never printed (run_cmd redacts --password=...).
+#   - DB password and SESSION_SECRET are generated with openssl and live only in
+#     Secret Manager; they are never printed (run_cmd redacts --password=...).
 #   - Preview first with:  DRY_RUN=1 ./deploy/deploy.sh   (no gcloud calls)
 #   - Run from the REPO ROOT (step 9 builds the root Dockerfile).
 #   - Offline test: deploy/tests/test_deploy_stub.sh
@@ -35,34 +37,19 @@ set -euo pipefail
 #   - Cloud SQL + Run   : https://cloud.google.com/sql/docs/postgres/connect-run
 #   - Secret Manager    : https://cloud.google.com/secret-manager/docs
 #   - Artifact Registry : https://cloud.google.com/artifact-registry/docs/docker
-#
-# ⭐ CHANGE ME — groups using another tech stack must review (marked below):
-#   # CHANGE ME: resource names (REPO_NAME, SQL_INSTANCE, SERVICE_NAME, ...)
-#   # CHANGE ME: database engine/version (steps 3, 4, 6)
-#   # CHANGE ME: migrate/seed command of the Cloud Run job (step 10)
-#   # CHANGE ME: port / memory / scaling flags (step 11)
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
 # Settings & argument parsing
 # ------------------------------------------------------------------------------
 DRY_RUN="${DRY_RUN:-0}"
-# CHANGE ME: default region if your group uses another one.
 REGION="${REGION:-asia-southeast1}"
-SEED_DEMO_DATA="false"
 
-for arg in "$@"; do
-  case "$arg" in
-    --demo)
-      SEED_DEMO_DATA="true"
-      ;;
-    *)
-      echo "Unknown argument: $arg" >&2
-      echo "Usage: $0 [--demo]" >&2
-      exit 1
-      ;;
-  esac
-done
+if [ "$#" -gt 0 ]; then
+  echo "Unknown argument: $1" >&2
+  echo "Usage: $0" >&2
+  exit 1
+fi
 
 # Helper: prints the command (DRY_RUN=1) or prints then executes it.
 # ⭐ IMPORTANT: --password=... is redacted in the log; keep this behaviour.
@@ -100,36 +87,40 @@ fi
 
 # ------------------------------------------------------------------------------
 # Resource names
-# ⚠️ The lab guide refers to these names (toktickit, toktickit-pg,
-#    toktickit-runner, ...) and deploy.yml / release.sh / teardown.sh use the
-#    same ones. Keep them unless the guide says otherwise.
-# CHANGE ME: rename only if your group uses its own naming (then rename it in
-#            deploy.yml, release.sh, teardown.sh and the tests too).
+# ⚠️ deploy.yml / release.sh / teardown.sh and deploy/tests use the same names.
+#    If you rename anything here, rename it there too.
 # ------------------------------------------------------------------------------
-REPO_NAME="toktickit"
-SQL_INSTANCE="toktickit-pg"
-DB_NAME="toktickit"
-DB_USER="toktickit"
-SERVICE_NAME="toktickit"
-MIGRATE_JOB_NAME="toktickit-migrate"
-SA_NAME="toktickit-runner"
+REPO_NAME="study-habit"
+SQL_INSTANCE="study-habit-pg"
+DB_NAME="study_habit"
+DB_USER="study_habit"
+SERVICE_NAME="study-habit"
+MIGRATE_JOB_NAME="study-habit-migrate"
+SA_NAME="study-habit-runner"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 SQL_CONN_NAME="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
 IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:latest"
 
 # Secret Manager secret names (values are never stored in this repo).
-SECRET_DB_URL="toktickit-database-url"
-SECRET_ADMIN_PASS="toktickit-admin-password"
-SECRET_DEMO_PASS="toktickit-demo-password"
+SECRET_DB_URL="study-habit-database-url"
+SECRET_SESSION="study-habit-session-secret"
+SECRET_ADMIN_PASS="study-habit-admin-password"
+SECRET_PARTICIPANT_PASS="study-habit-participant-password"
 
-GENERATED_ADMIN_PASSWORD=""
-GENERATED_DEMO_PASSWORD=""
+# Application users (the app has no sign-up page and the cloud DB is not
+# seeded, so one Cloud Run job per user creates them; see step 10b).
+# Each user has its OWN password secret so the roles are really separate.
+CREATE_USER_JOB_NAME="study-habit-create-user"
+FIRST_USERNAME="admin_pm"
+FIRST_EMAIL="admin@study-habit.example"
+CREATE_PARTICIPANT_JOB_NAME="study-habit-create-participant"
+PARTICIPANT_USERNAME="demo_participant"
+PARTICIPANT_EMAIL="participant@study-habit.example"
 
 echo "=================================================================="
-echo "TokTickIT Cloud Run Deployment"
+echo "Study Habit Tracker Cloud Run Deployment"
 echo "Project : ${PROJECT_ID}"
 echo "Region  : ${REGION}"
-echo "Demo    : ${SEED_DEMO_DATA}"
 echo "Dry Run : ${DRY_RUN}"
 echo "=================================================================="
 
@@ -151,13 +142,13 @@ run_cmd gcloud services enable \
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud artifacts repositories describe "$REPO_NAME" --location "$REGION" --project "$PROJECT_ID"
-  run_cmd gcloud artifacts repositories create "$REPO_NAME" --repository-format=docker --location "$REGION" --description="TokTickIT container repository" --project "$PROJECT_ID"
+  run_cmd gcloud artifacts repositories create "$REPO_NAME" --repository-format=docker --location "$REGION" --description="Study Habit Tracker container repository" --project "$PROJECT_ID"
 else
   if ! gcloud artifacts repositories describe "$REPO_NAME" --location "$REGION" --project "$PROJECT_ID" >/dev/null 2>&1; then
     run_cmd gcloud artifacts repositories create "$REPO_NAME" \
       --repository-format=docker \
       --location "$REGION" \
-      --description="TokTickIT container repository" \
+      --description="Study Habit Tracker container repository" \
       --project "$PROJECT_ID"
   fi
 fi
@@ -168,7 +159,6 @@ fi
 #       db-f1-micro and asserted by deploy/tests/test_deploy_stub.sh.
 #       Creating the instance takes several minutes and costs money until
 #       deploy/teardown.sh is run.
-#    CHANGE ME: --database-version / --tier for a different database.
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud sql instances describe "$SQL_INSTANCE" --project "$PROJECT_ID"
@@ -207,11 +197,11 @@ fi
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud iam service-accounts describe "$SA_EMAIL" --project "$PROJECT_ID"
-  run_cmd gcloud iam service-accounts create "$SA_NAME" --display-name="TokTickIT Cloud Run Service Account" --project "$PROJECT_ID"
+  run_cmd gcloud iam service-accounts create "$SA_NAME" --display-name="Study Habit Tracker Cloud Run Service Account" --project "$PROJECT_ID"
 else
   if ! gcloud iam service-accounts describe "$SA_EMAIL" --project "$PROJECT_ID" >/dev/null 2>&1; then
     run_cmd gcloud iam service-accounts create "$SA_NAME" \
-      --display-name="TokTickIT Cloud Run Service Account" \
+      --display-name="Study Habit Tracker Cloud Run Service Account" \
       --project "$PROJECT_ID"
   fi
 fi
@@ -226,8 +216,8 @@ run_cmd gcloud projects add-iam-policy-binding "$PROJECT_ID" \
 # 6. Create DB User & Store DATABASE_URL in Secret Manager (only if secret does not exist yet)
 #    ⭐ IMPORTANT: the DB user's password and the password inside DATABASE_URL
 #       must be the same value (checked by test_deploy_stub.sh). Never echo it.
-#    CHANGE ME: the URL format below is PostgreSQL + Prisma specific
-#       (host=/cloudsql/... unix socket, schema=public, connection_limit=3).
+#    The URL uses the Cloud SQL unix socket via the `host` query parameter,
+#    which node-postgres (pg) understands.
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud secrets describe "$SECRET_DB_URL" --project "$PROJECT_ID"
@@ -243,47 +233,47 @@ else
     else
       run_cmd gcloud sql users create "$DB_USER" --instance="$SQL_INSTANCE" --password="$DB_PASS" --project "$PROJECT_ID"
     fi
-    DB_URL_VALUE="postgresql://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}?host=/cloudsql/${SQL_CONN_NAME}&schema=public&connection_limit=3"
+    DB_URL_VALUE="postgresql://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}?host=/cloudsql/${SQL_CONN_NAME}"
     run_cmd gcloud secrets create "$SECRET_DB_URL" --replication-policy="automatic" --project "$PROJECT_ID"
     printf "%s" "$DB_URL_VALUE" | gcloud secrets versions add "$SECRET_DB_URL" --data-file=- --project "$PROJECT_ID"
   fi
 fi
 
 # ==============================================================================
-# 7. Create ADMIN_PASSWORD in Secret Manager (only if secret does not exist yet)
+# 7. Create SESSION_SECRET in Secret Manager (only if secret does not exist yet)
+#    express-session signs cookies with it; the app refuses to start without it.
 #    Read it later with: gcloud secrets versions access latest --secret=<name>
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
-  run_cmd gcloud secrets describe "$SECRET_ADMIN_PASS" --project "$PROJECT_ID"
-  run_cmd gcloud secrets create "$SECRET_ADMIN_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
-  run_cmd gcloud secrets versions add "$SECRET_ADMIN_PASS" --data-file=- --project "$PROJECT_ID"
+  run_cmd gcloud secrets describe "$SECRET_SESSION" --project "$PROJECT_ID"
+  run_cmd gcloud secrets create "$SECRET_SESSION" --replication-policy="automatic" --project "$PROJECT_ID"
+  run_cmd gcloud secrets versions add "$SECRET_SESSION" --data-file=- --project "$PROJECT_ID"
 else
-  if ! gcloud secrets describe "$SECRET_ADMIN_PASS" --project "$PROJECT_ID" >/dev/null 2>&1; then
-    GENERATED_ADMIN_PASSWORD="$(openssl rand -base64 16 | tr -d '/+=' | cut -c1-14)Aa1!"
-    run_cmd gcloud secrets create "$SECRET_ADMIN_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
-    printf "%s" "$GENERATED_ADMIN_PASSWORD" | gcloud secrets versions add "$SECRET_ADMIN_PASS" --data-file=- --project "$PROJECT_ID"
+  if ! gcloud secrets describe "$SECRET_SESSION" --project "$PROJECT_ID" >/dev/null 2>&1; then
+    GENERATED_SESSION_SECRET="$(openssl rand -hex 32)"
+    run_cmd gcloud secrets create "$SECRET_SESSION" --replication-policy="automatic" --project "$PROJECT_ID"
+    printf "%s" "$GENERATED_SESSION_SECRET" | gcloud secrets versions add "$SECRET_SESSION" --data-file=- --project "$PROJECT_ID"
   fi
 fi
 
 # ==============================================================================
-# 8. Optional Demo Password in Secret Manager when --demo is passed
-#    Only used to seed demo users (./deploy/deploy.sh --demo).
+# 8. Create one password secret per application user (only if missing)
+#    Read it later with: gcloud secrets versions access latest --secret=<name>
 # ==============================================================================
-JOB_SECRETS="DATABASE_URL=${SECRET_DB_URL}:latest,ADMIN_PASSWORD=${SECRET_ADMIN_PASS}:latest"
-if [ "$SEED_DEMO_DATA" = "true" ]; then
+ensure_password_secret() {
+  local secret="$1" suffix="$2" generated
   if [ "$DRY_RUN" = "1" ]; then
-    run_cmd gcloud secrets describe "$SECRET_DEMO_PASS" --project "$PROJECT_ID"
-    run_cmd gcloud secrets create "$SECRET_DEMO_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
-    run_cmd gcloud secrets versions add "$SECRET_DEMO_PASS" --data-file=- --project "$PROJECT_ID"
-  else
-    if ! gcloud secrets describe "$SECRET_DEMO_PASS" --project "$PROJECT_ID" >/dev/null 2>&1; then
-      GENERATED_DEMO_PASSWORD="$(openssl rand -base64 16 | tr -d '/+=' | cut -c1-14)Dd1!"
-      run_cmd gcloud secrets create "$SECRET_DEMO_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
-      printf "%s" "$GENERATED_DEMO_PASSWORD" | gcloud secrets versions add "$SECRET_DEMO_PASS" --data-file=- --project "$PROJECT_ID"
-    fi
+    run_cmd gcloud secrets describe "$secret" --project "$PROJECT_ID"
+    run_cmd gcloud secrets create "$secret" --replication-policy="automatic" --project "$PROJECT_ID"
+    run_cmd gcloud secrets versions add "$secret" --data-file=- --project "$PROJECT_ID"
+  elif ! gcloud secrets describe "$secret" --project "$PROJECT_ID" >/dev/null 2>&1; then
+    generated="$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-20)${suffix}"
+    run_cmd gcloud secrets create "$secret" --replication-policy="automatic" --project "$PROJECT_ID"
+    printf "%s" "$generated" | gcloud secrets versions add "$secret" --data-file=- --project "$PROJECT_ID"
   fi
-  JOB_SECRETS="${JOB_SECRETS},DEMO_USER_PASSWORD=${SECRET_DEMO_PASS}:latest"
-fi
+}
+ensure_password_secret "$SECRET_ADMIN_PASS" 'Aa1!'
+ensure_password_secret "$SECRET_PARTICIPANT_PASS" 'Pp1!'
 
 # ------------------------------------------------------------------------------
 # Secret access (per secret, NOT project-wide)
@@ -291,10 +281,7 @@ fi
 #    binding is added — keep access limited to this app's own secrets.
 # ------------------------------------------------------------------------------
 # Grant access only to this app's secrets, after they exist.
-RUNTIME_SECRETS=("$SECRET_DB_URL" "$SECRET_ADMIN_PASS")
-if [ "$SEED_DEMO_DATA" = "true" ]; then
-  RUNTIME_SECRETS+=("$SECRET_DEMO_PASS")
-fi
+RUNTIME_SECRETS=("$SECRET_DB_URL" "$SECRET_SESSION" "$SECRET_ADMIN_PASS" "$SECRET_PARTICIPANT_PASS")
 for secret in "${RUNTIME_SECRETS[@]}"; do
   run_cmd gcloud secrets add-iam-policy-binding "$secret" \
     --member="serviceAccount:${SA_EMAIL}" \
@@ -312,22 +299,23 @@ run_cmd gcloud builds submit \
   --project "$PROJECT_ID"
 
 # ==============================================================================
-# 10. Create/Update & Execute Cloud Run Job for Migration + Non-destructive Seed
+# 10. Create/Update & Execute Cloud Run Job for DB migration (NO seed)
 #     ⭐ IMPORTANT: if this job fails the script stops BEFORE deploying the
 #        service, so a broken migration never reaches users.
-#     CHANGE ME: `--args` (prisma migrate deploy && npm run prisma:seed) is
-#        Prisma/npm specific — use your stack's migrate/seed command.
-#     deploy.yml / release.sh later re-run this same job (name: toktickit-migrate).
+#     The migration is `node src/db/migrate.js` (idempotent, tracked in the
+#     schema_migrations table). The seed script creates demo accounts with
+#     public passwords, so RUN_SEED is explicitly false here.
+#     deploy.yml / release.sh later re-run this same job (name: study-habit-migrate).
 # ==============================================================================
 run_cmd gcloud run jobs deploy "$MIGRATE_JOB_NAME" \
   --image "$IMAGE_URI" \
   --region "$REGION" \
   --service-account "$SA_EMAIL" \
   --set-cloudsql-instances "$SQL_CONN_NAME" \
-  --set-secrets "$JOB_SECRETS" \
-  --set-env-vars "NODE_ENV=production,TZ=Asia/Bangkok,SEED_DEMO_DATA=${SEED_DEMO_DATA}" \
-  --command "sh" \
-  --args "-c,npx prisma migrate deploy && npm run prisma:seed" \
+  --set-secrets "DATABASE_URL=${SECRET_DB_URL}:latest" \
+  --set-env-vars "NODE_ENV=production,TZ=Asia/Bangkok,RUN_SEED=false" \
+  --command "node" \
+  --args "src/db/migrate.js" \
   --max-retries 1 \
   --task-timeout 300s \
   --project "$PROJECT_ID"
@@ -343,9 +331,49 @@ if ! run_cmd gcloud run jobs execute "$MIGRATE_JOB_NAME" \
 fi
 
 # ==============================================================================
+# 10b. Create the application users (a PM and a participant) with Cloud Run jobs
+#      The app has no sign-up page and the cloud DB is NOT seeded, so without
+#      this nobody could log in. Each user gets its own job and its own
+#      password secret (never printed). Idempotent: an existing user is kept as
+#      is, so re-running never resets a password.
+#      To add another user: add a password secret in step 8, grant access in
+#      RUNTIME_SECRETS, and call create_user_job below. Never reuse a secret.
+# ==============================================================================
+create_user_job() {
+  local job="$1" username="$2" email="$3" role="$4" secret="$5"
+  run_cmd gcloud run jobs deploy "$job" \
+    --image "$IMAGE_URI" \
+    --region "$REGION" \
+    --service-account "$SA_EMAIL" \
+    --set-cloudsql-instances "$SQL_CONN_NAME" \
+    --set-secrets "DATABASE_URL=${SECRET_DB_URL}:latest,USER_PASSWORD=${secret}:latest" \
+    --set-env-vars "NODE_ENV=production,USER_USERNAME=${username},USER_EMAIL=${email},USER_ROLE=${role}" \
+    --command "node" \
+    --args "src/db/create-user.js" \
+    --max-retries 0 \
+    --task-timeout 120s \
+    --project "$PROJECT_ID"
+
+  if ! run_cmd gcloud run jobs execute "$job" \
+    --region "$REGION" \
+    --wait \
+    --project "$PROJECT_ID"; then
+    printf '%s\n' "ERROR: Cloud Run job '${job}' failed. Aborting service deployment." >&2
+    exit 1
+  fi
+}
+create_user_job "$CREATE_USER_JOB_NAME" "$FIRST_USERNAME" "$FIRST_EMAIL" pm "$SECRET_ADMIN_PASS"
+create_user_job "$CREATE_PARTICIPANT_JOB_NAME" "$PARTICIPANT_USERNAME" "$PARTICIPANT_EMAIL" participant "$SECRET_PARTICIPANT_PASS"
+
+# ==============================================================================
 # 11. Deploy Cloud Run Service
-#     CHANGE ME: --port must equal the port in the Dockerfile (3000); tune
-#                --memory / --cpu / --max-instances for your app.
+#     --port must equal the port in the Dockerfile (3000).
+#     NODE_ENV=production makes cookies Secure (Cloud Run serves HTTPS) and the
+#     entrypoint re-runs the (idempotent) migration on start; RUN_SEED=false
+#     keeps demo accounts out of the real database.
+#     DB connections: db-f1-micro allows ~25. DB_POOL_MAX=5 caps each instance's
+#     pool, so 3 instances use at most 15, leaving room for the jobs and for the
+#     migration the entrypoint runs when an instance starts.
 #     ⚠️ --allow-unauthenticated makes the service public (needed for the demo).
 # ==============================================================================
 run_cmd gcloud run deploy "$SERVICE_NAME" \
@@ -355,8 +383,8 @@ run_cmd gcloud run deploy "$SERVICE_NAME" \
   --allow-unauthenticated \
   --service-account "$SA_EMAIL" \
   --add-cloudsql-instances "$SQL_CONN_NAME" \
-  --set-secrets "DATABASE_URL=${SECRET_DB_URL}:latest" \
-  --set-env-vars "NODE_ENV=production,TZ=Asia/Bangkok" \
+  --set-secrets "DATABASE_URL=${SECRET_DB_URL}:latest,SESSION_SECRET=${SECRET_SESSION}:latest" \
+  --set-env-vars "NODE_ENV=production,TZ=Asia/Bangkok,RUN_SEED=false,DB_POOL_MAX=5" \
   --min-instances 0 \
   --max-instances 3 \
   --memory 512Mi \
@@ -377,11 +405,9 @@ printf '\n'
 printf '%s\n' "=================================================================="
 printf '%s\n' "Deployment Completed!"
 printf '%s\n' "Service URL    : ${SERVICE_URL}"
-printf '%s\n' "Health Check   : ${SERVICE_URL}/api/health"
+printf '%s\n' "Health Check   : ${SERVICE_URL}/health"
 printf '%s\n' "Readiness Check: ${SERVICE_URL}/api/ready"
-printf '%s\n' "Admin Email    : john.smith@example.com (mustChangePassword: true)"
-printf '%s\n' "Admin Password : Stored in Secret Manager: ${SECRET_ADMIN_PASS} (not printed)."
-if [ "$SEED_DEMO_DATA" = "true" ]; then
-  printf '%s\n' "Demo Password  : Stored in Secret Manager: ${SECRET_DEMO_PASS} (not printed)."
-fi
+printf '%s\n' "Secrets        : ${SECRET_DB_URL}, ${SECRET_SESSION}, ${SECRET_ADMIN_PASS}, ${SECRET_PARTICIPANT_PASS} (in Secret Manager, not printed)."
+printf '%s\n' "Login (PM)     : username ${FIRST_USERNAME}; password in Secret Manager: ${SECRET_ADMIN_PASS}"
+printf '%s\n' "Login (member) : username ${PARTICIPANT_USERNAME}; password in Secret Manager: ${SECRET_PARTICIPANT_PASS}"
 printf '%s\n' "=================================================================="
