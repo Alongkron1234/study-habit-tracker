@@ -115,7 +115,7 @@ for MODE in first_run rerun partial job-fail; do
   if grep -q '^projects add-iam-policy-binding .*roles/secretmanager.secretAccessor' "$GCLOUD_LOG"; then
     echo 'FAIL: runtime has project-wide secret access'; exit 1
   fi
-  for secret in study-habit-database-url study-habit-session-secret study-habit-admin-password; do
+  for secret in study-habit-database-url study-habit-session-secret study-habit-admin-password study-habit-participant-password; do
     grep -q "^secrets add-iam-policy-binding $secret .*roles/secretmanager.secretAccessor" "$GCLOUD_LOG"
   done
   # The migrate job runs migrations only: never the demo seed (public passwords).
@@ -129,6 +129,15 @@ for MODE in first_run rerun partial job-fail; do
   if [ "$MODE" != job-fail ]; then
     grep -q '^run jobs deploy study-habit-create-user .*USER_PASSWORD=study-habit-admin-password:latest' "$GCLOUD_LOG"
     grep -q '^run jobs deploy study-habit-create-user .*--args src/db/create-user.js' "$GCLOUD_LOG"
+    grep -q '^run jobs deploy study-habit-create-user .*USER_ROLE=pm' "$GCLOUD_LOG"
+    # The participant has its OWN job, role and password secret (never the PM's).
+    grep -q '^run jobs deploy study-habit-create-participant .*USER_PASSWORD=study-habit-participant-password:latest' "$GCLOUD_LOG"
+    grep -q '^run jobs deploy study-habit-create-participant .*USER_ROLE=participant' "$GCLOUD_LOG"
+    if grep -q '^run jobs deploy study-habit-create-participant .*study-habit-admin-password' "$GCLOUD_LOG"; then
+      echo 'FAIL: participant shares the admin password secret'; exit 1
+    fi
+    # Cap the DB pool per instance (3 instances x 5 < db-f1-micro limit).
+    grep -q '^run deploy .*DB_POOL_MAX=5' "$GCLOUD_LOG"
   fi
   if grep -q 'USER_PASSWORD=[^s]' "$GCLOUD_LOG"; then
     echo 'FAIL: user password passed as plain value'; exit 1

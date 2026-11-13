@@ -62,7 +62,9 @@ SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 SECRET_DB_URL="study-habit-database-url"
 SECRET_SESSION="study-habit-session-secret"
 SECRET_ADMIN_PASS="study-habit-admin-password"
+SECRET_PARTICIPANT_PASS="study-habit-participant-password"
 CREATE_USER_JOB_NAME="study-habit-create-user"
+CREATE_PARTICIPANT_JOB_NAME="study-habit-create-participant"
 
 echo "=================================================================="
 echo "WARNING: This will permanently delete Study Habit Tracker resources in:"
@@ -70,10 +72,10 @@ echo "  Project : ${PROJECT_ID}"
 echo "  Region  : ${REGION}"
 echo "Resources to be deleted:"
 echo "  - Cloud Run Service : ${SERVICE_NAME}"
-echo "  - Cloud Run Jobs    : ${MIGRATE_JOB_NAME}, ${CREATE_USER_JOB_NAME}"
+echo "  - Cloud Run Jobs    : ${MIGRATE_JOB_NAME}, ${CREATE_USER_JOB_NAME}, ${CREATE_PARTICIPANT_JOB_NAME}"
 echo "  - Cloud SQL Instance: ${SQL_INSTANCE} (ALL DATABASE DATA WILL BE LOST)"
 echo "  - Artifact Registry : ${REPO_NAME}"
-echo "  - Secrets           : ${SECRET_DB_URL}, ${SECRET_SESSION}, ${SECRET_ADMIN_PASS}"
+echo "  - Secrets           : ${SECRET_DB_URL}, ${SECRET_SESSION}, ${SECRET_ADMIN_PASS}, ${SECRET_PARTICIPANT_PASS}"
 echo "  - Service Account   : ${SA_EMAIL}"
 echo "=================================================================="
 
@@ -94,11 +96,13 @@ fi
 run_cmd gcloud run services delete "$SERVICE_NAME" --region "$REGION" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud run jobs delete "$MIGRATE_JOB_NAME" --region "$REGION" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud run jobs delete "$CREATE_USER_JOB_NAME" --region "$REGION" --project "$PROJECT_ID" --quiet || true
+run_cmd gcloud run jobs delete "$CREATE_PARTICIPANT_JOB_NAME" --region "$REGION" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud sql instances delete "$SQL_INSTANCE" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud artifacts repositories delete "$REPO_NAME" --location "$REGION" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud secrets delete "$SECRET_DB_URL" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud secrets delete "$SECRET_SESSION" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud secrets delete "$SECRET_ADMIN_PASS" --project "$PROJECT_ID" --quiet || true
+run_cmd gcloud secrets delete "$SECRET_PARTICIPANT_PASS" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud iam service-accounts delete "$SA_EMAIL" --project "$PROJECT_ID" --quiet || true
 
 echo "Teardown completed."
