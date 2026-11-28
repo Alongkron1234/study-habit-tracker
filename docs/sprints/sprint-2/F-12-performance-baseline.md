@@ -3,7 +3,7 @@
 **Sprint:** 2 | **Issue:** #45 | **Branch:** `feature/f12-performance-baseline`
 **อ้างอิง SRS:** NFR-09, BR-04, BR-01
 **เวอร์ชัน:** 1.1 | **วันที่แก้ล่าสุด:** 2026-11-28
-**ผู้ทำ:** Alongkron1234 | **ผู้ review:** atiwit
+**ผู้ทำ:** atiwit | **ผู้ review:** Alongkron1234
 
 ---
 
