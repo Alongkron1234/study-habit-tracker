@@ -50,8 +50,7 @@ export function GoalDetailPage() {
 
   // Default entry date to today
   useEffect(() => {
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
-    setEntryDate(today);
+    setEntryDate(todayBangkok());
   }, []);
 
   const loadGoalData = useCallback(async () => {
