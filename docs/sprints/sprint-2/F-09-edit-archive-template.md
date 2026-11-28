@@ -2,7 +2,7 @@
 
 **Sprint:** 2 | **Issue:** #44 | **Branch:** `feature/f09-edit-archive-template`
 **อ้างอิง SRS:** FR-11, BR-02, BR-07, BR-08, BR-09, NFR-01, NFR-06
-**เวอร์ชัน:** 1.1 | **วันที่แก้ล่าสุด:** 2026-11-28
+**เวอร์ชัน:** 1.2 | **วันที่แก้ล่าสุด:** 2026-11-28
 **ผู้ทำ:** Alongkron1234 | **ผู้ review:** atiwit
 
 ---
@@ -19,8 +19,8 @@ PM แก้ไขชื่อและช่วงค่า entry (ต่ำส
 
 Workflow ฝั่ง UI (ดู §2 UI):
 1. PM เปิดหน้าแม่แบบ (`/templates`) ซึ่งแสดงรายการแม่แบบของตน
-2. แม่แบบที่ยังไม่ archived มีปุ่ม "แก้ไข" และ "เก็บถาวร"; แม่แบบที่ archived แสดงป้าย "เก็บถาวรแล้ว" และไม่มีปุ่ม
-3. แก้: กด "แก้ไข" → ช่องชื่อ/ต่ำสุด/สูงสุดเป็น input → "บันทึก" → `PATCH` / เก็บถาวร: กด "เก็บถาวร" → กล่องยืนยัน → `POST .../archive`
+2. แม่แบบที่ยังไม่ archived มีปุ่ม "Edit" และ "Archive"; แม่แบบที่ archived แสดงป้าย "Archived" และไม่มีปุ่ม
+3. แก้: กด "Edit" → ช่องชื่อ/ต่ำสุด/สูงสุดเป็น input → "Save" → `PATCH` / เก็บถาวร: กด "Archive" → กล่องยืนยัน → `POST .../archive`
 
 ### กฎและการตัดสินใจ (ขอให้ reviewer ยืนยัน)
 
@@ -85,10 +85,10 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 |---|---|
 | ตำแหน่ง | รายการแม่แบบในหน้า `/templates` (เฉพาะ PM) หน้านี้มีป้าย Active/Archived ต่อแม่แบบอยู่แล้ว |
 | ภาษา | ข้อความบนหน้าจอใช้ภาษาเดียวกับหน้าปัจจุบัน (อังกฤษ) ข้อความภาษาไทยในตารางนี้เป็นความหมายที่ต้องการ |
-| แม่แบบที่ยังไม่ archived | ปุ่ม "แก้ไข" และ "เก็บถาวร" |
-| แก้ไข | ชื่อ, ค่าต่ำสุด, ค่าสูงสุดเป็น input เริ่มด้วยค่าปัจจุบัน; ปุ่ม "บันทึก"/"ยกเลิก"; สำเร็จแล้วแสดงค่าใหม่; 400 แสดงข้อความของ `fields.<ชื่อ>` ใต้ช่องนั้น **ผ่าน `friendlyFields()` ใน `frontend/src/lib/messages.js`** แบบเดียวกับฟอร์มสร้างแม่แบบ (ไม่แสดงข้อความดิบของ API); 409 แสดง "แม่แบบนี้เก็บถาวรแล้ว แก้ไขไม่ได้" แล้วรีเฟรชรายการ |
+| แม่แบบที่ยังไม่ archived | ปุ่ม "Edit" และ "Archive" (UI ของแอปเป็นภาษาอังกฤษทั้งแอป) |
+| แก้ไข | ชื่อ, ค่าต่ำสุด, ค่าสูงสุดเป็น input เริ่มด้วยค่าปัจจุบัน; ปุ่ม "Save"/"Cancel"; สำเร็จแล้วแสดงค่าใหม่; 400 แสดงข้อความของ `fields.<ชื่อ>` ใต้ช่องนั้น **ผ่าน `friendlyFields()` ใน `frontend/src/lib/messages.js`** แบบเดียวกับฟอร์มสร้างแม่แบบ (ไม่แสดงข้อความดิบของ API); 409 แสดง "This template is archived and can no longer be edited." ปิดฟอร์มและรีเฟรชรายการ |
 | ข้อความที่ผู้ใช้เห็น | มีอยู่แล้วใน `messages.js`: `required, 1-100 characters`, `integer 1-960`, `must be >= min_value`, `must be minutes`; **เพิ่ม** `must be <= max_value` → "Min minutes must be at most the max minutes." (UI ส่งเฉพาะ name/min/max จึงไม่ต้องแปล `not editable` และ `body`) |
-| เก็บถาวร | กล่องยืนยัน "เก็บถาวรแม่แบบ <ชื่อ>? ผู้ใช้จะเริ่มเป้าหมายใหม่ด้วยแม่แบบนี้ไม่ได้"; สำเร็จแล้วแถวแสดงป้าย "เก็บถาวรแล้ว" และไม่มีปุ่ม |
+| เก็บถาวร | กล่องยืนยันของเบราว์เซอร์ (`window.confirm`) "Archive template \"<ชื่อ>\"? Participants will no longer be able to start new goals with it."; สำเร็จแล้วการ์ดแสดงป้าย "Archived" และไม่มีปุ่ม |
 
 ### ผลต่อโครงสร้างโค้ด
 
@@ -140,7 +140,7 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 | **TEST-F09-05c** | AC-F09-04 | API integration | แม่แบบที่ archive แล้ว | `PATCH` `{name: "X"}` | 409 `{"error":"Conflict"}`; DB เดิม |
 | **TEST-F09-06a** | AC-F09-05 | API integration | แม่แบบปกติ + แม่แบบอื่นที่ยังไม่ archived ของ PM A; archive แม่แบบแรก | Participant P `GET /api/templates`; PM A `GET /api/templates` | P เห็นเฉพาะแม่แบบที่ไม่ archived; PM A เห็นทั้งสอง และแม่แบบแรกมี `is_archived: true` |
 | **TEST-F09-06b** | AC-F09-05 | API integration | แม่แบบที่ archive แล้ว | P `POST /api/goals` ด้วย `template_id` นั้น (start วันนี้, end วันนี้ + 10) | 404 `{"error":"Not Found"}`; ไม่มี goal ใหม่ใน DB |
-| **TEST-F09-06c** | AC-F09-05 | API integration | goal active ของ P ที่ใช้แม่แบบ (positive control: บันทึก entry ได้ก่อน archive); แล้ว archive แม่แบบ | P `POST` entry วันนี้ minutes 30 ใน goal เดิม; `GET progress` | 201; progress `total_minutes = 30` |
+| **TEST-F09-06c** | AC-F09-05 | API integration | goal active ของ P ที่ใช้แม่แบบ; positive control: P `POST` entry วันที่ วันนี้ − 1 minutes 20 ได้ 201 ก่อน archive; แล้ว archive แม่แบบ | P `POST` entry วันนี้ minutes 30 ใน goal เดิม; `GET progress` | 201; progress `total_minutes = 50` |
 | **TEST-F09-07** | AC-F09-06 | API integration | goal active ของ P มี entry วันที่ วันนี้ − 1 minutes 30 (ในช่วง 10–120) | PM A `PATCH` `{min_value: 40}`; P `POST` entry วันนี้ minutes 30 และ minutes 50; `GET entries` และ `GET progress` | `POST` 30 → 400 `fields.minutes = "out of template range"`; `POST` 50 → 201; entry เดิม (30) ยังอยู่และค่าเดิม; `total_minutes = 80` |
 | **TEST-F09-08a** | AC-F09-07 | API integration | Participant P login | `PATCH` และ `POST .../archive` | 403 ทั้งคู่; แม่แบบไม่เปลี่ยน |
 | **TEST-F09-08b** | AC-F09-07 | API integration | PM B login; แม่แบบของ PM A (positive control: PM A แก้ชื่อได้ 200 ก่อน) | PM B `PATCH` และ `POST .../archive` | 404 ทั้งคู่; แม่แบบของ A ไม่เปลี่ยนจากค่าที่ A แก้ และ `is_archived = false` |
@@ -154,13 +154,13 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 
 ## 5. Definition of Done และหลักฐาน
 
-- [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — `<sha>`
-- [ ] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F09-10 แต่รวม TEST-F09-11) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — `<sha>`, ผลรัน `evidence/F-09-red-run.txt`
-- [ ] โค้ดครบตาม §2 (API, Logic, UI) และ `npm test` ผ่านทุกเทสต์ — `<sha>`, ผลรัน `evidence/F-09-green-run.txt` (ระบุจำนวน passed/failed/skipped)
-- [ ] TEST-F09-10 รันบน candidate แล้ว พร้อม screenshot ที่ระบุ version — `evidence/F-09-ui-*.png`
-- [ ] **ทั้ง test suite** ยังผ่าน (regression ของ F-01 ถึง F-07 และ feature อื่นใน Sprint 2 โดยเฉพาะ BR-02, BR-05, BR-07, BR-08) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
-- [ ] response ไม่มี `created_by` หรือ secret; error ไม่มี SQL/stack
-- [ ] `docs/traceability.md` อัปเดตแถว FR-11 ด้วย AC/TEST, ผลรัน และ commit SHA
+- [x] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — v1.0 `8017ea4`, v1.1 `60141da` (ก่อนเทสต์ `3876f3e`)
+- [x] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F09-10 แต่รวม TEST-F09-11) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — backend `3876f3e`, ผลรัน `evidence/F-09-red-run.txt` (62 failed / 280 เดิมผ่านครบ); UI `127c3c1`, ผลรัน `evidence/F-09-ui-red-run.txt` (10 failed / 36 passed)
+- [x] โค้ดครบตาม §2 (API, Logic, UI) และ `npm test` ผ่านทุกเทสต์ — backend `cfa2c8a`, ผลรัน `evidence/F-09-green-run.txt` (342 passed / 0 failed / 0 skipped); UI `5c1f7e4` (+ style `43ea6e0`), ผลรัน `evidence/F-09-ui-green-run.txt` (frontend 46 passed / 0 failed)
+- [x] TEST-F09-10 รันบน candidate แล้ว พร้อม screenshot ที่ระบุ version — `evidence/F-09-ui-1-before-43ea6e0.png`, `F-09-ui-2-min-greater-than-max-error-43ea6e0.png`, `F-09-ui-3-saved-after-reload-43ea6e0.png`, `F-09-ui-4-archived-no-buttons-43ea6e0.png`, `F-09-ui-5-participant-goal-after-archive-43ea6e0.png`
+- [x] **ทั้ง test suite** ยังผ่าน (regression ของ F-01 ถึง F-07 และ feature อื่นใน Sprint 2 โดยเฉพาะ BR-02, BR-05, BR-07, BR-08) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
+- [x] response ไม่มี `created_by` หรือ secret; error ไม่มี SQL/stack (TEST-F09-01, 05a)
+- [x] `docs/traceability.md` อัปเดตแถว FR-11 ด้วย AC/TEST, ผลรัน และ commit SHA
 - [ ] PR เข้า `sprint-2-staging` ผ่าน review จากเพื่อน — PR #<เลข>
 - [ ] merge เข้า `main` อยู่ใน release Sprint 2 (tag `<tag>`) และปิด Issue #<เลข> แล้ว
 
@@ -172,3 +172,4 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 |---|---|---|---|
 | 2026-11-28 | 1.0 | สร้างร่าง | ก่อนเริ่ม implement |
 | 2026-11-28 | 1.1 | §2 UI แสดง error ผ่าน `friendlyFields()` และเพิ่มข้อความ `must be <= max_value` ใน `messages.js`; TEST-F09-10 คาดข้อความที่แปลแล้ว; เพิ่ม TEST-F09-11 | review: UI จริงแปลข้อความ API ผ่าน `messages.js` ก่อนแสดง |
+| 2026-11-28 | 1.2 | (1) ชื่อปุ่ม ป้าย และข้อความ 409 ใน §1 และ §2 UI เปลี่ยนเป็นภาษาอังกฤษตาม UI (Edit / Archive / Save / Cancel / Archived / "This template is archived and can no longer be edited.") และระบุกล่องยืนยันเป็น `window.confirm`; (2) TEST-F09-06c: positive control ใช้ entry วันที่ วันนี้ − 1 (20 นาที) เพราะ entry วันนี้ถูกใช้หลัง archive ไม่ได้ซ้ำวันเดียวกัน (BR-01) ผลรวมที่คาดจึงเป็น 50 | ตามผล review PR ก่อนหน้า (ทั้งแอปเป็นภาษาอังกฤษ แนวเดียวกับ F-11 v1.3 และ F-10 v1.2) และแก้เลขที่คาดให้ตรงกับ setup ที่ทำได้จริง |
