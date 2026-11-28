@@ -36,6 +36,15 @@ describe('friendlyFieldError (UI polish)', () => {
     expect(friendlyFields({ target_minutes: 'must not exceed 350400' }).target_minutes).toMatch(/350,400/);
   });
 
+  it('TEST-F09-11: ข้อความตรวจข้ามกันของ min/max ของแม่แบบ', () => {
+    expect(friendlyFields({ min_value: 'must be <= max_value' })).toEqual({
+      min_value: 'Min minutes must be at most the max minutes.',
+    });
+    expect(friendlyFields({ max_value: 'must be >= min_value' })).toEqual({
+      max_value: 'Max minutes must be at least the min minutes.',
+    });
+  });
+
   it('ข้อความที่ไม่รู้จักแสดงตามเดิม และแปลทั้งชุด field ได้', () => {
     expect(friendlyFieldError('something new')).toBe('something new');
     expect(friendlyFields({ minutes: 'integer required' })).toEqual({

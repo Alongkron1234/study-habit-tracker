@@ -1,0 +1,72 @@
+# RED run — F-09 backend (tests written before implementation)
+base: 43dade5 (merge of sprint-2-staging @ c1bf16b into feature/f09-edit-archive-template; test files uncommitted at run time, committed next)
+date: 2026-11-28T14:37:31Z
+command: cd backend && npm test
+
+FAIL tests/template-edit.test.js
+    ✕ TEST-F09-01: 200, ชื่อถูก trim, ไม่มี field ต้องห้าม; DB ตรงกันและ updated_at ใหม่กว่าเดิม
+    ✕ TEST-F09-02: ส่งเฉพาะ name → 200 เปลี่ยนเฉพาะที่ส่ง, unit ยัง minutes
+    ✕ TEST-F09-02: ส่งเฉพาะ min_value → 200 เปลี่ยนเฉพาะที่ส่ง, unit ยัง minutes
+    ✕ TEST-F09-02: ส่งเฉพาะ max_value → 200 เปลี่ยนเฉพาะที่ส่ง, unit ยัง minutes
+    ✕ TEST-F09-02: ส่งเฉพาะ min_value + unit minutes → 200 เปลี่ยนเฉพาะที่ส่ง, unit ยัง minutes
+    ✕ TEST-F09-03a: name="" → 400
+    ✕ TEST-F09-03a: name="   " → 400
+    ✕ TEST-F09-03a: name="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" → 400
+    ✕ TEST-F09-03a: name=123 → 400
+    ✕ TEST-F09-03a: name=null → 400
+    ✕ TEST-F09-03b: min_value=0 → 400 integer 1-960
+    ✕ TEST-F09-03b: min_value=961 → 400 integer 1-960
+    ✕ TEST-F09-03b: min_value=1.5 → 400 integer 1-960
+    ✕ TEST-F09-03b: min_value="10" → 400 integer 1-960
+    ✕ TEST-F09-03b: min_value=null → 400 integer 1-960
+    ✕ TEST-F09-03b: max_value=0 → 400 integer 1-960
+    ✕ TEST-F09-03b: max_value=961 → 400 integer 1-960
+    ✕ TEST-F09-03b: max_value=1.5 → 400 integer 1-960
+    ✕ TEST-F09-03b: max_value="10" → 400 integer 1-960
+    ✕ TEST-F09-03b: max_value=null → 400 integer 1-960
+    ✕ TEST-F09-03c: ค่าขอบ 1–960 และ min = max → 200
+    ✕ TEST-F09-03d: ตรวจข้ามกัน min/max (แยกข้อความตามฝั่งที่ส่ง)
+    ✕ TEST-F09-03e: unit ที่ไม่ใช่ minutes → 400 must be minutes; ชื่อไม่เปลี่ยน
+    ✕ TEST-F09-04a: {"name":"X","is_archived":true} → 400 not editable
+    ✕ TEST-F09-04a: {"name":"X","created_by":999} → 400 not editable
+    ✕ TEST-F09-04a: {"name":"X","id":999} → 400 not editable
+    ✕ TEST-F09-04b: body ว่าง / มีแต่ unit → fields.body; ผิดหลาย field → รายงานครบ
+    ✕ TEST-F09-05a: 200 is_archived=true; DB เก็บและ updated_at ใหม่กว่าเดิม
+    ✕ TEST-F09-05b: archive ซ้ำ → 200 และ updated_at ไม่เปลี่ยน (idempotent)
+    ✕ TEST-F09-05c: PATCH แม่แบบที่ archived → 409; DB เดิม
+    ✕ TEST-F09-06a: Participant ไม่เห็นแม่แบบที่ archived; PM เห็นพร้อม is_archived: true
+    ✕ TEST-F09-06b: POST /api/goals ด้วยแม่แบบที่ archived → 404; ไม่มี goal ใหม่
+    ✕ TEST-F09-06c: goal active เดิมยังบันทึก entry ได้หลัง archive และ progress ถูกต้อง
+    ✕ TEST-F09-07: entry เดิมคงอยู่/นับ progress; entry ใหม่ตรวจกับช่วงใหม่
+    ✕ TEST-F09-08a: Participant → 403 ทั้งสอง endpoint; แม่แบบไม่เปลี่ยน
+    ✕ TEST-F09-08b: PM B กับแม่แบบของ PM A → 404 ทั้งสอง; แม่แบบของ A คงค่าที่ A แก้
+    ✕ TEST-F09-08c: id=abc → 404 ทั้งสอง endpoint
+    ✕ TEST-F09-08c: id=0 → 404 ทั้งสอง endpoint
+    ✕ TEST-F09-08c: id=-1 → 404 ทั้งสอง endpoint
+    ✕ TEST-F09-08c: id=999999 → 404 ทั้งสอง endpoint
+FAIL tests/rbac.test.js
+    ✕ TEST-F02-01a: patch /api/templates/1 ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01a: post /api/templates/1/archive ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01b: patch /api/templates/1 cookie ปลอม → 401
+    ✕ TEST-F02-01b: post /api/templates/1/archive cookie ปลอม → 401
+FAIL tests/validate.test.js
+    ✕ ส่งบางตัวหรือทั้งหมดที่ถูกต้อง → ok
+    ✕ name="" → required, 1-100 characters
+    ✕ name="   " → required, 1-100 characters
+    ✕ name="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" → required, 1-100 characters
+    ✕ name=123 → required, 1-100 characters
+    ✕ name=null → required, 1-100 characters
+    ✕ name 100 ตัวอักษรผ่าน
+    ✕ min_value: 0, 961, 1.5, "10", null → integer 1-960; 1 และ 960 ผ่าน
+    ✕ max_value: 0, 961, 1.5, "10", null → integer 1-960; 1 และ 960 ผ่าน
+    ✕ ตรวจข้ามกัน: ส่งเฉพาะ max ต่ำกว่า min เดิม → max_value; ส่งเฉพาะ min สูงกว่า max เดิม → min_value
+    ✕ ส่งทั้งคู่และ max < min → ชี้ที่ max_value; min = max ผ่าน
+    ✕ unit: minutes ผ่าน (ไม่นับเป็นข้อมูลที่แก้), hours → must be minutes
+    ✕ field is_archived → not editable
+    ✕ field created_by → not editable
+    ✕ field id → not editable
+    ✕ field created_at → not editable
+    ✕ body ว่าง / มีแต่ unit → fields.body
+    ✕ ผิดหลาย field → รายงานครบ (S-10)
+Test Suites: 3 failed, 9 passed, 12 total
+Tests:       62 failed, 280 passed, 342 total

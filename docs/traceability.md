@@ -19,7 +19,7 @@
 | FR-08 บันทึกรายวัน | F-05 | 1 | API integration + E2E journey | 1 | ผ่าน — AC-F05-01 · TEST-F05-01 (@5370950) |
 | FR-09 ดูความคืบหน้า | F-06 | 1 | Unit (คำนวณ) + API | 1 | ผ่าน — AC-F06-01 · TEST-F06-01a–c (@5370950) |
 | FR-10 ดูประวัติ | F-06 | 1 | API integration | 1 | ผ่าน — AC-F06-02 · TEST-F06-02 (@5370950) |
-| FR-11 แก้ไข/archive แม่แบบ | F-09 | 2 | กำหนดก่อน implement | 2 | วางแผน |
+| FR-11 แก้ไข/archive แม่แบบ | F-09 | 2 | API integration + unit + UI (manual demo พร้อม screenshot) | 2 | implement แล้ว — AC-F09-01–07 · TEST-F09-01–09 ผ่าน (@cfa2c8a); AC-F09-08 · UI ผ่าน Vitest (@5c1f7e4), TEST-F09-10 demo พร้อม screenshot (`evidence/F-09-ui-*-43ea6e0.png`) รอ review |
 | FR-12 แก้ไขเป้าหมาย | F-10 | 2 | API integration + unit + UI (manual demo พร้อม screenshot) | 2 | implement แล้ว — AC-F10-01–08 · TEST-F10-01–09 ผ่าน (@41b5139); AC-F10-09 · UI ผ่าน Vitest (@471121f), TEST-F10-10 demo พร้อม screenshot (`evidence/F-10-ui-*-e50a248.png`) รอ review |
 | FR-13 แก้ไข/ลบ entry | F-11 | 2 | API integration + unit + UI (manual demo พร้อม screenshot) | 2 | implement แล้ว — AC-F11-01–08 · TEST-F11-01–09 ผ่าน (@7410808); AC-F11-09 · UI ผ่าน Vitest (@173a82a), TEST-F11-10 demo พร้อม screenshot (`evidence/F-11-ui-*-6786754.png`) รอ review |
 | FR-14 streak | F-13 | 3 | กำหนดก่อน implement | 3 | วางแผน |

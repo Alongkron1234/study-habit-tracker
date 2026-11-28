@@ -3,9 +3,16 @@
  * Contract: docs/sprints/sprint-1/F-03-F-04-templates-goals.md  TEST-F03-U1
  * Contract: docs/sprints/sprint-2/F-11-edit-delete-entry.md  TEST-F11-09
  * Contract: docs/sprints/sprint-2/F-10-edit-goal.md  TEST-F10-09
+ * Contract: docs/sprints/sprint-2/F-09-edit-archive-template.md  TEST-F09-09
  * Requirements: BR-02, BR-04, BR-09, BR-01, BR-08, NFR-06
  */
-const { validateTemplate, validateGoal, validateGoalUpdate, validateEntryUpdate } = require('../src/lib/validate');
+const {
+  validateTemplate,
+  validateTemplateUpdate,
+  validateGoal,
+  validateGoalUpdate,
+  validateEntryUpdate,
+} = require('../src/lib/validate');
 const { todayBangkok, isValidDate, daysInclusive } = require('../src/lib/dates');
 
 const T = '2026-11-10';
@@ -179,5 +186,65 @@ describe('TEST-F10-09 — validateGoalUpdate (F-10)', () => {
   test('ผิดหลาย field → รายงานครบ (S-8)', () => {
     const r = v({ target_minutes: 1.5, end_date: 'x', start_date: '2026-01-01' });
     expect(Object.keys(r.fields).sort()).toEqual(['end_date', 'start_date', 'target_minutes']);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// TEST-F09-09 — validateTemplateUpdate (S-3, S-4, S-5, S-10)
+describe('TEST-F09-09 — validateTemplateUpdate (F-09)', () => {
+  const current = { name: 'Reading', min_value: 10, max_value: 120 };
+  const v = (body) => validateTemplateUpdate(body, current);
+
+  test('ส่งบางตัวหรือทั้งหมดที่ถูกต้อง → ok', () => {
+    expect(v({ name: 'New' }).ok).toBe(true);
+    expect(v({ min_value: 20 }).ok).toBe(true);
+    expect(v({ max_value: 100 }).ok).toBe(true);
+    expect(v({ name: 'Deep', min_value: 15, max_value: 90 }).ok).toBe(true);
+  });
+
+  test.each([[''], ['   '], ['x'.repeat(101)], [123], [null]])('name=%p → required, 1-100 characters', (x) => {
+    expect(v({ name: x }).fields).toEqual({ name: 'required, 1-100 characters' });
+  });
+  test('name 100 ตัวอักษรผ่าน', () => {
+    expect(v({ name: 'x'.repeat(100) }).ok).toBe(true);
+  });
+
+  test.each([['min_value'], ['max_value']])('%s: 0, 961, 1.5, "10", null → integer 1-960; 1 และ 960 ผ่าน', (k) => {
+    [0, 961, 1.5, '10', null].forEach((x) => {
+      expect(v({ [k]: x }).fields[k]).toBe('integer 1-960');
+    });
+    expect(v({ min_value: 1, max_value: 960 }).ok).toBe(true);
+  });
+
+  test('ตรวจข้ามกัน: ส่งเฉพาะ max ต่ำกว่า min เดิม → max_value; ส่งเฉพาะ min สูงกว่า max เดิม → min_value', () => {
+    expect(v({ max_value: 5 }).fields).toEqual({ max_value: 'must be >= min_value' });
+    expect(v({ min_value: 200 }).fields).toEqual({ min_value: 'must be <= max_value' });
+  });
+  test('ส่งทั้งคู่และ max < min → ชี้ที่ max_value; min = max ผ่าน', () => {
+    expect(v({ min_value: 80, max_value: 70 }).fields).toEqual({ max_value: 'must be >= min_value' });
+    expect(v({ min_value: 50, max_value: 50 }).ok).toBe(true);
+  });
+
+  test('unit: minutes ผ่าน (ไม่นับเป็นข้อมูลที่แก้), hours → must be minutes', () => {
+    expect(v({ name: 'X', unit: 'minutes' }).ok).toBe(true);
+    expect(v({ name: 'X', unit: 'hours' }).fields).toEqual({ unit: 'must be minutes' });
+  });
+
+  test.each([['is_archived'], ['created_by'], ['id'], ['created_at']])('field %s → not editable', (k) => {
+    const r = v({ name: 'X', [k]: 1 });
+    expect(r.ok).toBe(false);
+    expect(r.fields[k]).toBe('not editable');
+    expect(r.fields).not.toHaveProperty('body');
+  });
+
+  test('body ว่าง / มีแต่ unit → fields.body', () => {
+    expect(v({}).fields.body).toBe('name, min_value or max_value required');
+    expect(v(undefined).fields.body).toBe('name, min_value or max_value required');
+    expect(v({ unit: 'minutes' }).fields.body).toBe('name, min_value or max_value required');
+  });
+
+  test('ผิดหลาย field → รายงานครบ (S-10)', () => {
+    const r = v({ name: '', min_value: 1.5, is_archived: true });
+    expect(Object.keys(r.fields).sort()).toEqual(['is_archived', 'min_value', 'name']);
   });
 });

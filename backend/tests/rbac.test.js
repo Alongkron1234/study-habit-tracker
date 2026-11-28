@@ -34,6 +34,8 @@ const PROTECTED_ENDPOINTS = [
   ['get', '/__test/items/1'],
   ['post', '/api/templates'],
   ['get', '/api/templates'],
+  ['patch', '/api/templates/1'],
+  ['post', '/api/templates/1/archive'],
   ['post', '/api/goals'],
   ['get', '/api/goals'],
   ['get', '/api/goals/1'],
