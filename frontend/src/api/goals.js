@@ -30,3 +30,20 @@ export async function createGoalEntry(goalId, data) {
   });
 }
 
+
+// F-11: แก้ไข minutes / ลบ entry (เฉพาะแถวที่อยู่ในช่วงแก้ได้ — backend ตรวจ S-1 เสมอ)
+export async function updateGoalEntry(goalId, entryId, data) {
+  return apiClient(`/api/goals/${goalId}/entries/${entryId}`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
+export async function deleteGoalEntry(goalId, entryId) {
+  return apiClient(`/api/goals/${goalId}/entries/${entryId}`, { method: 'DELETE' });
+}
+
+// F-10: แก้ target_minutes / end_date ของ goal ที่ยัง active (backend ตรวจ S-1 เสมอ)
+export async function updateGoal(goalId, data) {
+  return apiClient(`/api/goals/${goalId}`, { method: 'PATCH', body: data });
+}

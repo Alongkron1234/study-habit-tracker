@@ -1,0 +1,24 @@
+# RED run — F-10 UI (tests written before implementation)
+base: 41b5139 (backend GREEN); UI test files uncommitted at run time, committed next
+date: 2026-11-28T14:23:05Z
+command: cd frontend && npx vitest run
+
+     × TEST-F10-11: "must not be in the past" แปลตาม field (end_date ไม่ใช่ "start date")
+     × shows the Edit goal button only for an active goal
+     × opens a form prefilled with the current target and end date
+     × saves: sends PATCH with the new values, closes the form, shows the new target and progress
+     × Cancel closes the form without calling the API
+     × 400 on target_minutes: shows the translated message under the field and stays open
+     × 400 on end_date in the past: says "end date", not "start date"
+     × 409: tells the user the goal has ended, closes the form and reloads the goal
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/tests/goal-edit.test.jsx > TEST-F10-10 (UI) — edit goal on goal detail page > shows the Edit goal button only for an active goal
+ FAIL  src/tests/goal-edit.test.jsx > TEST-F10-10 (UI) — edit goal on goal detail page > opens a form prefilled with the current target and end date
+ FAIL  src/tests/goal-edit.test.jsx > TEST-F10-10 (UI) — edit goal on goal detail page > saves: sends PATCH with the new values, closes the form, shows the new target and progress
+ FAIL  src/tests/goal-edit.test.jsx > TEST-F10-10 (UI) — edit goal on goal detail page > Cancel closes the form without calling the API
+ FAIL  src/tests/goal-edit.test.jsx > TEST-F10-10 (UI) — edit goal on goal detail page > 400 on target_minutes: shows the translated message under the field and stays open
+ FAIL  src/tests/goal-edit.test.jsx > TEST-F10-10 (UI) — edit goal on goal detail page > 400 on end_date in the past: says "end date", not "start date"
+ FAIL  src/tests/goal-edit.test.jsx > TEST-F10-10 (UI) — edit goal on goal detail page > 409: tells the user the goal has ended, closes the form and reloads the goal
+ FAIL  src/tests/messages.test.js > friendlyFieldError (UI polish) > TEST-F10-11: "must not be in the past" แปลตาม field (end_date ไม่ใช่ "start date")
+ Test Files  2 failed | 4 passed (6)
+      Tests  8 failed | 28 passed (36)

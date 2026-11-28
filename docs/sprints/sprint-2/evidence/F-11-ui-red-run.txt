@@ -1,0 +1,21 @@
+# F-11 UI RED run — frontend/src/tests/entry-edit.test.jsx (before UI code)
+# base commit: fb86cad + new untracked test file; date: 2026-11-28 10:55
+      Tests  8 failed | 1 passed (9)
+     × 400 out of template range: shows the message under the field and stays in edit mode 18ms
+     × 409 on delete: shows the same message and reloads the list 15ms
+     × 409: tells the user the entry can no longer be edited and reloads the list 18ms
+     × Cancel leaves edit mode without calling the API 16ms
+     × deletes after confirmation: row disappears and progress is refreshed 15ms
+     × does not delete when the confirmation is dismissed 16ms
+     × edits minutes: sends PATCH with the number, then refreshes entries and progress 22ms
+     × shows Edit/Delete only on rows within the last 7 days of an active goal 78ms
+ FAIL  src/tests/entry-edit.test.jsx > TEST-F11-10 (UI) — edit/delete entry on goal detail page > 400 out of template range: shows the message under the field and stays in edit mode
+ FAIL  src/tests/entry-edit.test.jsx > TEST-F11-10 (UI) — edit/delete entry on goal detail page > 409 on delete: shows the same message and reloads the list
+ FAIL  src/tests/entry-edit.test.jsx > TEST-F11-10 (UI) — edit/delete entry on goal detail page > 409: tells the user the entry can no longer be edited and reloads the list
+ FAIL  src/tests/entry-edit.test.jsx > TEST-F11-10 (UI) — edit/delete entry on goal detail page > Cancel leaves edit mode without calling the API
+ FAIL  src/tests/entry-edit.test.jsx > TEST-F11-10 (UI) — edit/delete entry on goal detail page > deletes after confirmation: row disappears and progress is refreshed
+ FAIL  src/tests/entry-edit.test.jsx > TEST-F11-10 (UI) — edit/delete entry on goal detail page > does not delete when the confirmation is dismissed
+ FAIL  src/tests/entry-edit.test.jsx > TEST-F11-10 (UI) — edit/delete entry on goal detail page > edits minutes: sends PATCH with the number, then refreshes entries and progress
+ FAIL  src/tests/entry-edit.test.jsx > TEST-F11-10 (UI) — edit/delete entry on goal detail page > shows Edit/Delete only on rows within the last 7 days of an active goal
+ Test Files  1 failed (1)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯

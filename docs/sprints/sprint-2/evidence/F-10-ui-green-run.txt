@@ -1,0 +1,7 @@
+# GREEN run — F-10 UI
+base: 9da4bb6 (UI RED) + implementation in working tree, committed next
+date: 2026-11-28T14:23:36Z
+command: cd frontend && npx vitest run
+
+ Test Files  6 passed (6)
+      Tests  36 passed (36)

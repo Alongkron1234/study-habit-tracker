@@ -1,9 +1,11 @@
 /**
  * validate.test.js — unit test ของ validate.js และ dates.js
  * Contract: docs/sprints/sprint-1/F-03-F-04-templates-goals.md  TEST-F03-U1
- * Requirements: BR-02, BR-04, BR-09
+ * Contract: docs/sprints/sprint-2/F-11-edit-delete-entry.md  TEST-F11-09
+ * Contract: docs/sprints/sprint-2/F-10-edit-goal.md  TEST-F10-09
+ * Requirements: BR-02, BR-04, BR-09, BR-01, BR-08, NFR-06
  */
-const { validateTemplate, validateGoal } = require('../src/lib/validate');
+const { validateTemplate, validateGoal, validateGoalUpdate, validateEntryUpdate } = require('../src/lib/validate');
 const { todayBangkok, isValidDate, daysInclusive } = require('../src/lib/dates');
 
 const T = '2026-11-10';
@@ -43,6 +45,13 @@ describe('TEST-F03-U1 — validateGoal (S-5)', () => {
   test('target_minutes = 1 ผ่าน', () => {
     expect(validateGoal({ ...okGoal, target_minutes: 1 }, T).ok).toBe(true);
   });
+  // Bug #42: เพดานบน 350400 = 960 นาที/วัน × 365 วัน
+  test('target_minutes = 350400 (เพดาน) ผ่าน', () => {
+    expect(validateGoal({ ...okGoal, target_minutes: 350400 }, T).ok).toBe(true);
+  });
+  test.each([[350401], [2147483648], [3000000000]])('target_minutes=%p → must not exceed 350400', (v) => {
+    expect(validateGoal({ ...okGoal, target_minutes: v }, T).fields.target_minutes).toBe('must not exceed 350400');
+  });
   test.each([['2026-02-30'], ['x'], ['2026-1-5'], [undefined], [20261120]])('end_date=%p → ไม่ผ่าน', (v) => {
     expect(validateGoal({ ...okGoal, end_date: v }, T).fields).toHaveProperty('end_date');
   });
@@ -75,5 +84,100 @@ describe('TEST-F03-U1 — dates (S-11)', () => {
   test('todayBangkok: 17:00Z ของวันก่อนหน้าคือเที่ยงคืน Bangkok (วันถัดไป)', () => {
     expect(todayBangkok(new Date('2026-11-09T16:59:59Z'))).toBe('2026-11-09');
     expect(todayBangkok(new Date('2026-11-09T17:00:00Z'))).toBe('2026-11-10');
+  });
+});
+
+// ── F-11: validateEntryUpdate (TEST-F11-09, S-4, S-5, S-13) ─────────────────
+describe('TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13)', () => {
+  const tpl = { min_value: 10, max_value: 120 };
+
+  test.each([[10], [11], [60], [119], [120]])('minutes=%p (ในช่วง/ขอบ) → ok', (v) => {
+    const r = validateEntryUpdate({ minutes: v }, tpl);
+    expect(r.ok).toBe(true);
+    expect(r.fields).toEqual({});
+  });
+
+  test.each([[-1], [0], [1], [9], [121]])('minutes=%p (จำนวนเต็มนอกช่วง) → "out of template range"', (v) => {
+    const r = validateEntryUpdate({ minutes: v }, tpl);
+    expect(r.ok).toBe(false);
+    expect(r.fields).toEqual({ minutes: 'out of template range' });
+  });
+
+  test.each([[1.5], ['60'], [null], [undefined], [true], [NaN]])('minutes=%p (ไม่ใช่จำนวนเต็ม) → "integer required"', (v) => {
+    const r = validateEntryUpdate({ minutes: v }, tpl);
+    expect(r.ok).toBe(false);
+    expect(r.fields).toEqual({ minutes: 'integer required' });
+  });
+
+  test('ไม่มี field minutes (body ว่าง / ไม่มี body) → "integer required"', () => {
+    expect(validateEntryUpdate({}, tpl).fields).toEqual({ minutes: 'integer required' });
+    expect(validateEntryUpdate(undefined, tpl).fields).toEqual({ minutes: 'integer required' });
+  });
+
+  test('field เกิน (entry_date, goal_id) → "not editable" แม้ minutes ถูกต้อง', () => {
+    const r = validateEntryUpdate({ minutes: 30, entry_date: '2026-11-10', goal_id: 5 }, tpl);
+    expect(r.ok).toBe(false);
+    expect(r.fields).toEqual({ entry_date: 'not editable', goal_id: 'not editable' });
+  });
+
+  test('S-13: minutes ผิดและมี field เกิน → รายงานทุก field พร้อมกัน', () => {
+    const r = validateEntryUpdate({ minutes: 1.5, entry_date: '2026-11-10' }, tpl);
+    expect(r.ok).toBe(false);
+    expect(r.fields).toEqual({ minutes: 'integer required', entry_date: 'not editable' });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// TEST-F10-09 — validateGoalUpdate (S-2 ถึง S-8)
+describe('TEST-F10-09 — validateGoalUpdate (F-10)', () => {
+  const goal = { start_date: '2026-11-01' }; // today = T (2026-11-10)
+  const v = (body) => validateGoalUpdate(body, goal, T);
+
+  test('ข้อมูลถูกต้องอย่างใดอย่างหนึ่งหรือทั้งสอง → ok', () => {
+    expect(v({ target_minutes: 900 }).ok).toBe(true);
+    expect(v({ end_date: '2026-11-30' }).ok).toBe(true);
+    expect(v({ target_minutes: 900, end_date: '2026-11-30' }).ok).toBe(true);
+  });
+
+  test.each([[0], [-5], [1.5], ['1'], [null]])('target_minutes=%p → positive integer', (x) => {
+    expect(v({ target_minutes: x }).fields).toEqual({ target_minutes: 'positive integer' });
+  });
+  test('target_minutes = 1 และ 350400 ผ่าน; 350401 → must not exceed 350400', () => {
+    expect(v({ target_minutes: 1 }).ok).toBe(true);
+    expect(v({ target_minutes: 350400 }).ok).toBe(true);
+    expect(v({ target_minutes: 350401 }).fields.target_minutes).toBe('must not exceed 350400');
+  });
+
+  test.each([['2026-13-45'], ['abc'], [20261130], [null]])('end_date=%p → date YYYY-MM-DD', (x) => {
+    expect(v({ end_date: x }).fields).toEqual({ end_date: 'date YYYY-MM-DD' });
+  });
+  test('end_date ก่อน start_date → must not be before start_date (แม้ผ่านมาแล้วด้วย: ข้อความแรกตาม S-7)', () => {
+    expect(v({ end_date: '2026-10-31' }).fields.end_date).toBe('must not be before start_date');
+  });
+  test('ระยะเวลา 365 วันพอดีผ่าน, 366 วัน → duration must not exceed 365 days', () => {
+    expect(v({ end_date: '2027-10-31' }).ok).toBe(true);
+    expect(v({ end_date: '2027-11-01' }).fields.end_date).toBe('duration must not exceed 365 days');
+  });
+  test('end_date ก่อนวันนี้ → must not be in the past; วันนี้ผ่าน', () => {
+    expect(v({ end_date: '2026-11-09' }).fields.end_date).toBe('must not be in the past');
+    expect(v({ end_date: T }).ok).toBe(true);
+  });
+
+  test.each([['template_id'], ['start_date'], ['status'], ['user_id'], ['id']])('field %s → not editable', (k) => {
+    const r = v({ target_minutes: 900, [k]: 1 });
+    expect(r.ok).toBe(false);
+    expect(r.fields[k]).toBe('not editable');
+    expect(r.fields).not.toHaveProperty('body');
+  });
+  test('body ว่าง หรือมีแต่ field ที่แก้ไม่ได้ → fields.body', () => {
+    expect(v({}).fields.body).toBe('target_minutes or end_date required');
+    expect(v(undefined).fields.body).toBe('target_minutes or end_date required');
+    const r = v({ status: 'ended' });
+    expect(r.fields.body).toBe('target_minutes or end_date required');
+    expect(r.fields.status).toBe('not editable');
+  });
+  test('ผิดหลาย field → รายงานครบ (S-8)', () => {
+    const r = v({ target_minutes: 1.5, end_date: 'x', start_date: '2026-01-01' });
+    expect(Object.keys(r.fields).sort()).toEqual(['end_date', 'start_date', 'target_minutes']);
   });
 });

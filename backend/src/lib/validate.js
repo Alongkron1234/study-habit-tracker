@@ -4,6 +4,9 @@
  */
 const { isValidDate, daysInclusive } = require('./dates');
 
+// เพดานของ target_minutes = 960 นาที/วัน × 365 วัน (ยอดสูงสุดที่ goal หนึ่งทำได้จริง) ใช้ร่วมกับ F-10
+const MAX_TARGET_MINUTES = 350400;
+
 const isInt = (v) => typeof v === 'number' && Number.isInteger(v);
 const inRange = (v) => isInt(v) && v >= 1 && v <= 960;
 
@@ -21,11 +24,19 @@ function validateTemplate(body) {
   return { ok: Object.keys(fields).length === 0, fields };
 }
 
+// ตรวจ target_minutes (ใช้ร่วมกันระหว่าง F-04 สร้าง goal และ F-10 แก้ goal) คืนข้อความ error หรือ null
+function targetMinutesError(v) {
+  if (!isInt(v) || v <= 0) return 'positive integer';
+  if (v > MAX_TARGET_MINUTES) return `must not exceed ${MAX_TARGET_MINUTES}`;
+  return null;
+}
+
 function validateGoal(body, today) {
   const b = body || {};
   const fields = {};
 
-  if (!isInt(b.target_minutes) || b.target_minutes <= 0) fields.target_minutes = 'positive integer';
+  const tmErr = targetMinutesError(b.target_minutes);
+  if (tmErr) fields.target_minutes = tmErr;
 
   const startOk = isValidDate(b.start_date);
   const endOk = isValidDate(b.end_date);
@@ -34,6 +45,41 @@ function validateGoal(body, today) {
   if (!endOk) fields.end_date = 'date YYYY-MM-DD';
   else if (startOk && b.end_date < b.start_date) fields.end_date = 'must not be before start_date';
   else if (startOk && daysInclusive(b.start_date, b.end_date) > 365) fields.end_date = 'duration must not exceed 365 days';
+
+  return { ok: Object.keys(fields).length === 0, fields };
+}
+
+/**
+ * validateGoalUpdate — ตรวจ body ของ PATCH /api/goals/:id ตาม contract F-10 (S-2 ถึง S-8)
+ * @param {object} body — req.body
+ * @param {{start_date: string}} goal — goal ปัจจุบัน (YYYY-MM-DD)
+ * @param {string} today — วันนี้แบบ YYYY-MM-DD (Asia/Bangkok) จาก todayBangkok()
+ * @returns {{ ok: boolean, fields: object }} รายงานทุก field ที่ผิดพร้อมกัน (S-8)
+ */
+function validateGoalUpdate(body, goal, today) {
+  const b = body !== null && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
+  const fields = {};
+
+  // S-2: แก้ได้เฉพาะ target_minutes และ end_date
+  Object.keys(b).forEach((k) => {
+    if (k !== 'target_minutes' && k !== 'end_date') fields[k] = 'not editable';
+  });
+  // S-3: ต้องมีอย่างน้อยหนึ่งในสอง field
+  if (!has('target_minutes') && !has('end_date')) fields.body = 'target_minutes or end_date required';
+
+  if (has('target_minutes')) {
+    const err = targetMinutesError(b.target_minutes);
+    if (err) fields.target_minutes = err;
+  }
+
+  if (has('end_date')) {
+    // S-7: รายงานข้อความแรกที่ไม่ผ่านเพียงข้อความเดียว
+    if (!isValidDate(b.end_date)) fields.end_date = 'date YYYY-MM-DD';
+    else if (b.end_date < goal.start_date) fields.end_date = 'must not be before start_date';
+    else if (daysInclusive(goal.start_date, b.end_date) > 365) fields.end_date = 'duration must not exceed 365 days';
+    else if (b.end_date < today) fields.end_date = 'must not be in the past';
+  }
 
   return { ok: Object.keys(fields).length === 0, fields };
 }
@@ -74,4 +120,30 @@ function validateEntry(body, goal, template, today) {
   return { ok: Object.keys(fields).length === 0, fields };
 }
 
-module.exports = { validateTemplate, validateGoal, validateEntry };
+/**
+ * validateEntryUpdate — ตรวจ body ของ PATCH entry ตาม contract F-11 (S-4, S-5, S-13)
+ * แก้ได้เฉพาะ minutes; field อื่นทุกตัว → "not editable"; รายงานทุก field ที่ผิดพร้อมกัน
+ * @param {object} body     — req.body
+ * @param {object} template — { min_value, max_value }
+ * @returns {{ ok: boolean, fields: object }}
+ */
+function validateEntryUpdate(body, template) {
+  const b = body && typeof body === 'object' ? body : {};
+  const fields = {};
+
+  // --- minutes (S-5, BR-02) ---
+  if (!isInt(b.minutes)) {
+    fields.minutes = 'integer required';
+  } else if (b.minutes < template.min_value || b.minutes > template.max_value) {
+    fields.minutes = 'out of template range';
+  }
+
+  // --- field อื่น (S-4: กัน mass-assignment) ---
+  for (const key of Object.keys(b)) {
+    if (key !== 'minutes') fields[key] = 'not editable';
+  }
+
+  return { ok: Object.keys(fields).length === 0, fields };
+}
+
+module.exports = { validateTemplate, validateGoal, validateGoalUpdate, validateEntry, validateEntryUpdate, MAX_TARGET_MINUTES };

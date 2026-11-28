@@ -1,9 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getGoal, getGoalProgress, getGoalEntries, createGoalEntry } from '../api/goals';
+import {
+  getGoal,
+  getGoalProgress,
+  getGoalEntries,
+  createGoalEntry,
+  updateGoal,
+  updateGoalEntry,
+  deleteGoalEntry,
+} from '../api/goals';
 import { getTemplates } from '../api/templates';
 import { LoadingSpinner, EmptyState, ErrorAlert } from '../components/StateFeedback';
 import { friendlyFields } from '../lib/messages';
+
+const EDIT_WINDOW_DAYS = 7;
+
+function todayBangkok() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
+}
+
+function addDays(ymd, n) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
 
 export function GoalDetailPage() {
   const { id } = useParams();
@@ -23,10 +42,25 @@ export function GoalDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Edit/Delete Entry State (F-11)
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [editError, setEditError] = useState('');
+  const [entryNotice, setEntryNotice] = useState('');
+  const [rowBusy, setRowBusy] = useState(false);
+
+  // Edit Goal State (F-10)
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalTarget, setGoalTarget] = useState('');
+  const [goalEnd, setGoalEnd] = useState('');
+  const [goalFieldErrors, setGoalFieldErrors] = useState({});
+  const [goalFormError, setGoalFormError] = useState('');
+  const [goalNotice, setGoalNotice] = useState('');
+  const [goalSaving, setGoalSaving] = useState(false);
+
   // Default entry date to today
   useEffect(() => {
-    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
-    setEntryDate(today);
+    setEntryDate(todayBangkok());
   }, []);
 
   const loadGoalData = useCallback(async () => {
@@ -58,6 +92,140 @@ export function GoalDetailPage() {
   useEffect(() => {
     loadGoalData();
   }, [loadGoalData]);
+
+  const refreshEntriesAndProgress = async () => {
+    const [progRes, entriesRes] = await Promise.all([
+      getGoalProgress(id),
+      getGoalEntries(id),
+    ]);
+    setProgress(progRes.progress);
+    setEntries(entriesRes.entries || []);
+  };
+
+  // F-10: โหลด goal และ progress ใหม่ (ไม่ใช้ loadGoalData เพราะจะกระพริบเป็นหน้า loading)
+  const refreshGoalAndProgress = async () => {
+    const [goalRes, progRes] = await Promise.all([getGoal(id), getGoalProgress(id)]);
+    setGoal(goalRes.goal);
+    setProgress(progRes.progress);
+  };
+
+  const startGoalEdit = () => {
+    setGoalNotice('');
+    setGoalFormError('');
+    setGoalFieldErrors({});
+    setGoalTarget(String(goal.target_minutes));
+    setGoalEnd(goal.end_date);
+    setEditingGoal(true);
+  };
+
+  const cancelGoalEdit = () => {
+    setEditingGoal(false);
+    setGoalFormError('');
+    setGoalFieldErrors({});
+  };
+
+  const handleGoalSave = async (e) => {
+    e.preventDefault();
+    setGoalFormError('');
+    setGoalFieldErrors({});
+    setGoalNotice('');
+    setGoalSaving(true);
+    try {
+      await updateGoal(id, { target_minutes: Number(goalTarget), end_date: goalEnd });
+      setEditingGoal(false);
+      await refreshGoalAndProgress();
+    } catch (err) {
+      if (err.status === 409) {
+        // goal จบไปแล้ว: ปิดฟอร์ม แจ้งผู้ใช้ และโหลดสถานะล่าสุด (ปุ่มแก้จะหายไป)
+        setEditingGoal(false);
+        setGoalNotice('This goal has ended and can no longer be edited.');
+        try {
+          await refreshGoalAndProgress();
+        } catch {
+          /* ถ้ารีเฟรชไม่ได้ ผู้ใช้ยังเห็นข้อความแจ้งอยู่ */
+        }
+      } else if (err.data?.fields) {
+        setGoalFieldErrors(friendlyFields(err.data.fields, template));
+      } else {
+        setGoalFormError(err.message || 'Failed to update goal');
+      }
+    } finally {
+      setGoalSaving(false);
+    }
+  };
+
+  // S-14: ปุ่มแก้/ลบแสดงเฉพาะ entry_date >= วันนี้ − 7 และ goal active
+  // (UI ไม่ใช่การป้องกัน — backend ตรวจ S-1 เองเสมอ)
+  const canModify = (entry) =>
+    goal?.status === 'active' && entry.entry_date >= addDays(todayBangkok(), -EDIT_WINDOW_DAYS);
+
+  const startEdit = (entry) => {
+    setEntryNotice('');
+    setEditError('');
+    setEditingId(entry.id);
+    setEditValue(String(entry.minutes));
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditError('');
+  };
+
+  // 409/404: entry เปลี่ยนสถานะไปแล้ว → แจ้งผู้ใช้และโหลดรายการใหม่
+  const handleStaleEntry = async (err) => {
+    setEditingId(null);
+    setEditError('');
+    setEntryNotice(
+      err.status === 409
+        ? 'This entry can no longer be edited.'
+        : 'This entry no longer exists.'
+    );
+    try {
+      await refreshEntriesAndProgress();
+    } catch {
+      /* ถ้ารีเฟรชไม่ได้ ผู้ใช้ยังเห็นข้อความแจ้งอยู่ */
+    }
+  };
+
+  const handleEditSave = async (entry) => {
+    setEditError('');
+    setEntryNotice('');
+    setRowBusy(true);
+    try {
+      await updateGoalEntry(id, entry.id, { minutes: Number(editValue) });
+      setEditingId(null);
+      await refreshEntriesAndProgress();
+    } catch (err) {
+      if (err.status === 409 || err.status === 404) {
+        await handleStaleEntry(err);
+      } else if (err.data?.fields?.minutes) {
+        setEditError(friendlyFields(err.data.fields, template).minutes);
+      } else {
+        setEditError(err.message || 'Failed to update entry');
+      }
+    } finally {
+      setRowBusy(false);
+    }
+  };
+
+  const handleDelete = async (entry) => {
+    setEntryNotice('');
+    if (!window.confirm(`Delete the entry for ${entry.entry_date} (${entry.minutes} mins)?`)) return;
+    setRowBusy(true);
+    try {
+      await deleteGoalEntry(id, entry.id);
+      if (editingId === entry.id) setEditingId(null);
+      await refreshEntriesAndProgress();
+    } catch (err) {
+      if (err.status === 409 || err.status === 404) {
+        await handleStaleEntry(err);
+      } else {
+        setEntryNotice(err.message || 'Failed to delete entry');
+      }
+    } finally {
+      setRowBusy(false);
+    }
+  };
 
   const handleEntrySubmit = async (e) => {
     e.preventDefault();
@@ -122,6 +290,58 @@ export function GoalDetailPage() {
           Period: {goal.start_date} to {goal.end_date} | Target: {goal.target_minutes} mins
         </p>
       </header>
+
+      {/* Edit Goal (F-10, S-15: ปุ่มเฉพาะ goal ที่ active — backend ตรวจ S-1 เองเสมอ) */}
+      {goalNotice && (
+        <p className="field-error" role="alert">
+          {goalNotice}
+        </p>
+      )}
+      {!isEnded && !editingGoal && (
+        <button type="button" className="btn-secondary goal-edit-btn" onClick={startGoalEdit}>
+          Edit goal
+        </button>
+      )}
+      {editingGoal && (
+        <form onSubmit={handleGoalSave} className="dashboard-card form-card goal-edit-form" data-testid="goal-edit-form">
+          <h3>Edit Goal</h3>
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="goal-target">Target minutes</label>
+              <input
+                id="goal-target"
+                type="number"
+                value={goalTarget}
+                onChange={(e) => setGoalTarget(e.target.value)}
+              />
+              {goalFieldErrors.target_minutes && (
+                <span className="field-error">{goalFieldErrors.target_minutes}</span>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="goal-end">End date</label>
+              <input
+                id="goal-end"
+                type="date"
+                value={goalEnd}
+                onChange={(e) => setGoalEnd(e.target.value)}
+              />
+              {goalFieldErrors.end_date && <span className="field-error">{goalFieldErrors.end_date}</span>}
+            </div>
+          </div>
+          {(goalFieldErrors.body || goalFormError) && (
+            <p className="field-error">{goalFieldErrors.body || goalFormError}</p>
+          )}
+          <div className="entry-actions">
+            <button type="submit" className="btn-primary" disabled={goalSaving}>
+              Save
+            </button>
+            <button type="button" className="btn-secondary" onClick={cancelGoalEdit} disabled={goalSaving}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Progress Summary Card (F-06, BR-06) */}
       <div className="dashboard-card progress-card" data-testid="progress-summary">
@@ -217,20 +437,89 @@ export function GoalDetailPage() {
           <EmptyState message="No habit entries recorded for this goal yet." />
         ) : (
           <div className="entries-table-container">
+            {entryNotice && <ErrorAlert message={entryNotice} />}
             <table className="entries-table" data-testid="entries-table">
               <thead>
                 <tr>
                   <th>Date</th>
                   <th>Minutes</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {entries.map((item) => (
-                  <tr key={item.id} data-testid={`entry-row-${item.id}`}>
-                    <td>{item.entry_date}</td>
-                    <td>{item.minutes} mins</td>
-                  </tr>
-                ))}
+                {entries.map((item) => {
+                  const editable = canModify(item);
+                  const isEditing = editingId === item.id;
+                  return (
+                    <tr key={item.id} data-testid={`entry-row-${item.id}`}>
+                      <td>{item.entry_date}</td>
+                      <td>
+                        {isEditing ? (
+                          <div className="entry-edit-field">
+                            <input
+                              type="number"
+                              aria-label={`Minutes for ${item.entry_date}`}
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleEditSave(item);
+                                if (e.key === 'Escape') cancelEdit();
+                              }}
+                              autoFocus
+                            />
+                            {editError && <span className="field-error">{editError}</span>}
+                          </div>
+                        ) : (
+                          <>{item.minutes} mins</>
+                        )}
+                      </td>
+                      <td className="entry-actions">
+                        {editable && isEditing && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-primary btn-sm"
+                              onClick={() => handleEditSave(item)}
+                              disabled={rowBusy}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-secondary btn-sm"
+                              onClick={cancelEdit}
+                              disabled={rowBusy}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                        {editable && !isEditing && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-secondary btn-sm"
+                              aria-label={`Edit entry ${item.entry_date}`}
+                              onClick={() => startEdit(item)}
+                              disabled={rowBusy}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-danger btn-sm"
+                              aria-label={`Delete entry ${item.entry_date}`}
+                              onClick={() => handleDelete(item)}
+                              disabled={rowBusy}
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
