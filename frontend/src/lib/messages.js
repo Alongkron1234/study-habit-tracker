@@ -7,6 +7,7 @@ const FRIENDLY = {
   'required, 1-100 characters': 'Enter a name (1–100 characters).',
   'integer 1-960': 'Enter a whole number from 1 to 960.',
   'must be >= min_value': 'Max minutes must be at least the min minutes.',
+  'must be <= max_value': 'Min minutes must be at most the max minutes.',
   'must be minutes': 'The unit must be minutes.',
   'positive integer': 'Enter a whole number greater than 0.',
   'must not exceed 350400': 'The target cannot exceed 350,400 minutes (960 minutes a day for 365 days).',
