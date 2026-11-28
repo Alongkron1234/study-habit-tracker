@@ -2,11 +2,13 @@
  * goals.js — F-04 การตั้งเป้าหมาย
  * Contract: docs/sprints/sprint-1/F-03-F-04-templates-goals.md
  * Requirements: FR-07, BR-04, BR-05, BR-08
+ * F-10 (PATCH /:id): docs/sprints/sprint-2/F-10-edit-goal.md — FR-12
  */
 const express = require('express');
 const pool = require('../db/db');
 const { requireAuth, requireRole, ownedBy } = require('../middleware/auth');
-const { validateGoal } = require('../lib/validate');
+const { validateGoal, validateGoalUpdate } = require('../lib/validate');
+const { updateActiveGoal } = require('../lib/goal-update');
 const { todayBangkok } = require('../lib/dates');
 
 const router = express.Router();
@@ -74,6 +76,34 @@ router.get('/:id', requireAuth, requireRole('participant'), ownedBy(goalOwner), 
   try {
     const { rows } = await pool.query(`${SELECT_GOAL} WHERE id = $1`, [Number(req.params.id), todayBangkok()]);
     return res.json({ goal: rows[0] });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// F-10: แก้ target_minutes / end_date ของ goal ที่ยัง active (S-14: 401 → 403 → 404 → 409 → 400)
+router.patch('/:id', requireAuth, requireRole('participant'), ownedBy(goalOwner), async (req, res, next) => {
+  try {
+    const today = todayBangkok();
+    const id = Number(req.params.id);
+    const cur = await pool.query(
+      "SELECT to_char(start_date, 'YYYY-MM-DD') AS start_date, to_char(end_date, 'YYYY-MM-DD') AS end_date FROM goals WHERE id = $1",
+      [id]
+    );
+    // S-1: goal ที่จบแล้วแก้ไม่ได้
+    if (cur.rows[0].end_date < today) return res.status(409).json({ error: 'Conflict' });
+
+    const v = validateGoalUpdate(req.body, cur.rows[0], today);
+    if (!v.ok) return res.status(400).json({ error: 'Bad Request', fields: v.fields });
+
+    const goal = await updateActiveGoal({
+      id,
+      userId: req.session.user.id,
+      fields: { target_minutes: req.body.target_minutes, end_date: req.body.end_date },
+      today,
+    });
+    if (!goal) return res.status(409).json({ error: 'Conflict' }); // S-9: goal จบระหว่างตรวจกับบันทึก
+    return res.json({ goal });
   } catch (err) {
     return next(err);
   }
