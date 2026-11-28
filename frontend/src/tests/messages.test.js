@@ -23,6 +23,19 @@ describe('friendlyFieldError (UI polish)', () => {
     expect(msg).toMatch(/350,?400/);
   });
 
+  it('TEST-F10-11: "must not be in the past" แปลตาม field (end_date ไม่ใช่ "start date")', () => {
+    expect(friendlyFields({ end_date: 'must not be in the past' })).toEqual({
+      end_date: 'The end date cannot be in the past.',
+    });
+    expect(friendlyFields({ start_date: 'must not be in the past' })).toEqual({
+      start_date: 'The start date cannot be in the past.',
+    });
+  });
+
+  it('TEST-F10-11: เพดาน target_minutes แปลได้ผ่าน friendlyFields', () => {
+    expect(friendlyFields({ target_minutes: 'must not exceed 350400' }).target_minutes).toMatch(/350,400/);
+  });
+
   it('ข้อความที่ไม่รู้จักแสดงตามเดิม และแปลทั้งชุด field ได้', () => {
     expect(friendlyFieldError('something new')).toBe('something new');
     expect(friendlyFields({ minutes: 'integer required' })).toEqual({

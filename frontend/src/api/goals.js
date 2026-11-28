@@ -42,3 +42,8 @@ export async function updateGoalEntry(goalId, entryId, data) {
 export async function deleteGoalEntry(goalId, entryId) {
   return apiClient(`/api/goals/${goalId}/entries/${entryId}`, { method: 'DELETE' });
 }
+
+// F-10: แก้ target_minutes / end_date ของ goal ที่ยัง active (backend ตรวจ S-1 เสมอ)
+export async function updateGoal(goalId, data) {
+  return apiClient(`/api/goals/${goalId}`, { method: 'PATCH', body: data });
+}

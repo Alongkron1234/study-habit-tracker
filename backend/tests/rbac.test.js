@@ -37,6 +37,7 @@ const PROTECTED_ENDPOINTS = [
   ['post', '/api/goals'],
   ['get', '/api/goals'],
   ['get', '/api/goals/1'],
+  ['patch', '/api/goals/1'],
   ['post', '/api/goals/1/entries'],
   ['get', '/api/goals/1/progress'],
   ['get', '/api/goals/1/entries'],

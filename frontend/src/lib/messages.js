@@ -20,11 +20,23 @@ const FRIENDLY = {
   'must be within goal period': 'The date must be within the goal period.',
 };
 
+// ข้อความที่ต้องต่างกันตามชื่อ field (ใช้ก่อน FRIENDLY) เช่น "must not be in the past"
+// ของ end_date (F-10) ต้องไม่ถูกแปลว่า "start date"
+const FRIENDLY_BY_FIELD = {
+  end_date: {
+    'must not be in the past': 'The end date cannot be in the past.',
+  },
+};
+
 /**
  * @param {string} message ข้อความจาก backend
  * @param {{min_value?: number, max_value?: number}} [template] ใช้บอกช่วงที่ถูกต้อง
+ * @param {string} [field] ชื่อ field ที่มีข้อความนี้ (ถ้ามี จะดูตารางตาม field ก่อน)
  */
-export function friendlyFieldError(message, template) {
+export function friendlyFieldError(message, template, field) {
+  if (field && FRIENDLY_BY_FIELD[field] && FRIENDLY_BY_FIELD[field][message]) {
+    return FRIENDLY_BY_FIELD[field][message];
+  }
   if (message === 'out of template range') {
     if (template && template.min_value != null && template.max_value != null) {
       return `Minutes must be between ${template.min_value} and ${template.max_value}.`;
@@ -37,7 +49,7 @@ export function friendlyFieldError(message, template) {
 export function friendlyFields(fields, template) {
   const out = {};
   Object.keys(fields || {}).forEach((k) => {
-    out[k] = friendlyFieldError(fields[k], template);
+    out[k] = friendlyFieldError(fields[k], template, k);
   });
   return out;
 }

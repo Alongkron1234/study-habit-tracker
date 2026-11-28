@@ -1,0 +1,66 @@
+# RED run — F-10 backend (tests written before implementation)
+base: 120d2ca (merge of sprint-2-staging @ 788edd4 into feature/f10-edit-goal; test files uncommitted at run time, committed next)
+date: 2026-11-28T14:21:49Z
+command: cd backend && npm test
+
+FAIL tests/rbac.test.js
+    ✕ TEST-F02-01a: patch /api/goals/1 ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01b: patch /api/goals/1 cookie ปลอม → 401
+FAIL tests/validate.test.js
+    ✕ ข้อมูลถูกต้องอย่างใดอย่างหนึ่งหรือทั้งสอง → ok
+    ✕ target_minutes=0 → positive integer
+    ✕ target_minutes=-5 → positive integer
+    ✕ target_minutes=1.5 → positive integer
+    ✕ target_minutes="1" → positive integer
+    ✕ target_minutes=null → positive integer
+    ✕ target_minutes = 1 และ 350400 ผ่าน; 350401 → must not exceed 350400
+    ✕ end_date="2026-13-45" → date YYYY-MM-DD
+    ✕ end_date="abc" → date YYYY-MM-DD
+    ✕ end_date=20261130 → date YYYY-MM-DD
+    ✕ end_date=null → date YYYY-MM-DD
+    ✕ end_date ก่อน start_date → must not be before start_date (แม้ผ่านมาแล้วด้วย: ข้อความแรกตาม S-7)
+    ✕ ระยะเวลา 365 วันพอดีผ่าน, 366 วัน → duration must not exceed 365 days
+    ✕ end_date ก่อนวันนี้ → must not be in the past; วันนี้ผ่าน
+    ✕ field template_id → not editable
+    ✕ field start_date → not editable
+    ✕ field status → not editable
+    ✕ field user_id → not editable
+    ✕ field id → not editable
+    ✕ body ว่าง หรือมีแต่ field ที่แก้ไม่ได้ → fields.body
+    ✕ ผิดหลาย field → รายงานครบ (S-8)
+FAIL tests/goal-edit.test.js
+    ✕ TEST-F10-01: 200, goal.target_minutes ใหม่, ไม่มี field ต้องห้าม; DB เก็บค่าใหม่และ updated_at ใหม่กว่าเดิม
+    ✕ TEST-F10-02a: ขยายแล้วย่น end_date → 200 ทั้งคู่; target_minutes ไม่เปลี่ยน
+    ✕ TEST-F10-02b: ส่งทั้งสอง field → 200 และทั้งสองค่าเปลี่ยนใน DB
+    ✕ TEST-F10-02c: field หนึ่งผิด → 400 และอีก field ไม่เปลี่ยนครึ่งเดียว
+    ✕ TEST-F10-03a: เป้า 200 → 300: total=150, percent=50; entries ยัง 2 แถวค่าเดิม
+    ✕ TEST-F10-03b: ลดเป้าเหลือ 100 (ต่ำกว่ายอดรวม) → total=150, percent=100 ไม่เกิน 100
+    ✕ TEST-F10-04a: target_minutes=0 → 400 positive integer
+    ✕ TEST-F10-04a: target_minutes=-5 → 400 positive integer
+    ✕ TEST-F10-04a: target_minutes=1.5 → 400 positive integer
+    ✕ TEST-F10-04a: target_minutes="100" → 400 positive integer
+    ✕ TEST-F10-04a: target_minutes=null → 400 positive integer
+    ✕ TEST-F10-04b: target_minutes=350401 → 400 must not exceed 350400 (ไม่ใช่ 500)
+    ✕ TEST-F10-04b: target_minutes=3000000000 → 400 must not exceed 350400 (ไม่ใช่ 500)
+    ✕ TEST-F10-04c: target_minutes=350400 (เพดานพอดี) → 200
+    ✕ TEST-F10-05a: end_date="2026-13-45" → 400 date YYYY-MM-DD
+    ✕ TEST-F10-05a: end_date="abc" → 400 date YYYY-MM-DD
+    ✕ TEST-F10-05a: end_date=20261130 → 400 date YYYY-MM-DD
+    ✕ TEST-F10-05b: ก่อน start_date → must not be before start_date; ระยะเวลา 366 วัน → duration must not exceed 365 days
+    ✕ TEST-F10-05c: end_date = วันนี้ − 1 → 400 must not be in the past
+    ✕ TEST-F10-05d: ย่น end_date เป็นวันนี้ (ขอบ) → 200; entry เดิมครบและยอดรวมเท่าเดิม
+    ✕ TEST-F10-05e: ระยะเวลา 365 วันพอดี → 200
+    ✕ TEST-F10-06a: template_id / start_date / status → 400 not editable
+    ✕ TEST-F10-06b: body ว่าง → fields.body; ผิดหลาย field → รายงานครบ (S-8)
+    ✕ TEST-F10-07a: end_date = วันนี้ − 1 → 409 ทั้งแก้ target และ end_date; DB เดิม
+    ✕ TEST-F10-07b: end_date = วันนี้ ยังแก้ได้ → 200
+    ✕ TEST-F10-07c: goal จบระหว่างตรวจกับบันทึก → UPDATE ไม่มีแถว (null); DB เดิม
+    ✕ TEST-F10-08a: PM → 403; goal ไม่เปลี่ยน
+    ✕ TEST-F10-08b: Participant B แก้ goal ของ A → 404; goal ของ A คงค่าที่ A แก้
+    ✕ TEST-F10-08c: id=abc → 404
+    ✕ TEST-F10-08c: id=0 → 404
+    ✕ TEST-F10-08c: id=-1 → 404
+    ✕ TEST-F10-08c: id=999999 → 404
+    Cannot find module '../src/lib/goal-update' from 'tests/goal-edit.test.js'
+Test Suites: 3 failed, 8 passed, 11 total
+Tests:       55 failed, 225 passed, 280 total
