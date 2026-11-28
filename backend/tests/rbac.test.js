@@ -40,6 +40,8 @@ const PROTECTED_ENDPOINTS = [
   ['post', '/api/goals/1/entries'],
   ['get', '/api/goals/1/progress'],
   ['get', '/api/goals/1/entries'],
+  ['patch', '/api/goals/1/entries/1'],
+  ['delete', '/api/goals/1/entries/1'],
 ];
 
 let app;
