@@ -16,7 +16,7 @@ const { createApp } = require('../src/app');
 const { createUser, loginAs, cleanupPrefix, todayBkk, addDays } = require('./helpers/fixtures');
 
 const P = 'test_f11_';
-let app, pmId, aId, bId, aCookie, bCookie, pmCookie, templateId;
+let app, pmId, aId, bId, aCookie, bCookie, pmCookie, templateId, templateId2;
 
 // goal active ตาม precondition ของ contract §4: start_date = วันนี้ − 10, end_date = วันนี้ + 29
 async function insertGoal(userId, overrides = {}) {
@@ -26,7 +26,7 @@ async function insertGoal(userId, overrides = {}) {
      VALUES ($1, $2, $3, $4, $5, 'active') RETURNING id`,
     [
       userId,
-      templateId,
+      overrides.template_id ?? templateId,
       overrides.target_minutes ?? 600,
       overrides.start_date ?? addDays(today, -10),
       overrides.end_date ?? addDays(today, 29),
@@ -85,6 +85,12 @@ beforeAll(async () => {
     [pmId, `${P}template`]
   );
   templateId = rows[0].id;
+  // template ที่สอง: ผู้ใช้คนเดียวมี goal active ได้ 1 อันต่อ template (uq_goals_active)
+  const t2 = await pool.query(
+    'INSERT INTO activity_templates (created_by, name, min_value, max_value) VALUES ($1, $2, 10, 120) RETURNING id',
+    [pmId, `${P}template2`]
+  );
+  templateId2 = t2.rows[0].id;
   aCookie = await loginAs(app, `${P}a`);
   bCookie = await loginAs(app, `${P}b`);
   pmCookie = await loginAs(app, `${P}pm`);
@@ -322,6 +328,10 @@ describe('TEST-F11-08 — สิทธิ์และ ownership (AC-F11-08, BR-0
     const goalId = await insertGoal(aId);
     const entryId = await insertEntry(goalId, todayBkk(), 30);
 
+    // positive control: เจ้าของแก้ได้ (พิสูจน์ว่า route มีอยู่จริง ไม่ใช่ 404 เพราะไม่มี route)
+    const own = await patchEntry(aCookie, goalId, entryId, { minutes: 35 });
+    expect(own.status).toBe(200);
+
     const p = await patchEntry(bCookie, goalId, entryId, { minutes: 50 });
     expect(p.status).toBe(404);
     const d = await deleteEntry(bCookie, goalId, entryId);
@@ -329,14 +339,18 @@ describe('TEST-F11-08 — สิทธิ์และ ownership (AC-F11-08, BR-0
 
     const row = await dbEntry(entryId);
     expect(row).toBeDefined();
-    expect(row.minutes).toBe(30);
+    expect(row.minutes).toBe(35);
   });
 
   test('TEST-F11-08c: entry อยู่ goal อื่น หรือ entryId ผิดรูปแบบ/ไม่มี → 404 ทุกกรณี; entry ใน goalY ไม่เปลี่ยน', async () => {
     const today = todayBkk();
     const goalX = await insertGoal(aId);
-    const goalY = await insertGoal(aId, { start_date: addDays(today, -9) });
+    const goalY = await insertGoal(aId, { template_id: templateId2 });
     const entryInY = await insertEntry(goalY, today, 30);
+
+    // positive control: แก้ผ่าน goal ที่ถูกต้องได้ (พิสูจน์ว่า route มีอยู่จริง)
+    const ok = await patchEntry(aCookie, goalY, entryInY, { minutes: 35 });
+    expect(ok.status).toBe(200);
 
     const cross = await patchEntry(aCookie, goalX, entryInY, { minutes: 50 });
     expect(cross.status).toBe(404);
@@ -352,6 +366,6 @@ describe('TEST-F11-08 — สิทธิ์และ ownership (AC-F11-08, BR-0
 
     const row = await dbEntry(entryInY);
     expect(row).toBeDefined();
-    expect(row.minutes).toBe(30);
+    expect(row.minutes).toBe(35);
   });
 });
