@@ -338,6 +338,60 @@ body {
   color: var(--text-secondary);
 }
 
+/* Entry row actions (F-11) */
+.entry-actions {
+  white-space: nowrap;
+}
+
+.entry-actions button + button {
+  margin-left: 0.5rem;
+}
+
+.entry-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.entry-edit-field input {
+  width: 6rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.btn-secondary,
+.btn-danger {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  color: var(--text-secondary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #f1f5f9;
+}
+
+.btn-danger {
+  color: var(--error-color);
+  border-color: var(--error-color);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #fef2f2;
+}
+
+.entry-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Login Page */
 .login-container {
   display: flex;
