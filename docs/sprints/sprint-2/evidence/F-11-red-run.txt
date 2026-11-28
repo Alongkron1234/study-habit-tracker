@@ -1,0 +1,893 @@
+# RED run — F-11 (tests written before implementation)
+commit: d9f78716e051399e8c7b0fbed0649a61ff565d26
+date:   2026-11-28T01:01:48Z
+command: cd backend && npm test
+
+
+> study-habit-tracker-backend@0.1.0 test
+> jest --forceExit --runInBand
+
+FAIL tests/entry-edit.test.js
+  TEST-F11-01 — แก้ minutes สำเร็จ (AC-F11-01)
+    ✕ TEST-F11-01: 200, entry.minutes ใหม่, ไม่มี field ต้องห้าม; DB เก็บค่าใหม่และ updated_at ใหม่กว่าเดิม (32 ms)
+  TEST-F11-02 — progress หลังแก้/ลบ (AC-F11-02, BR-06)
+    ✕ TEST-F11-02a: แก้ entry 60 เป็น 80 → progress total=170, percent=85 (3 ms)
+    ✕ TEST-F11-02b: ลบ entry 90 → progress total=60, percent=30; entry ที่ลบไม่อยู่ใน GET entries (2 ms)
+  TEST-F11-03 — ตรวจค่า minutes (AC-F11-03, BR-02)
+    ✕ TEST-F11-03a: ทศนิยม / string / null / ไม่มี field → 400 "integer required"; DB = 30 (2 ms)
+    ✕ TEST-F11-03b: 0, -5, 9, 121 → 400 "out of template range"; DB = 30 (2 ms)
+    ✕ TEST-F11-03c: ค่าขอบ 10 และ 120 → 200 ทั้งคู่; DB = 120 (2 ms)
+  TEST-F11-04 — แก้ field อื่นไม่ได้ (AC-F11-04, S-4, S-13)
+    ✕ TEST-F11-04a: ส่ง entry_date หรือ goal_id → 400 "not editable"; DB เดิม (2 ms)
+    ✕ TEST-F11-04b: minutes ผิดและมี entry_date เกินมา → 400 มีทั้ง fields.minutes และ fields.entry_date (2 ms)
+  TEST-F11-05 — ช่วงที่แก้/ลบได้ 7 วัน (AC-F11-05, S-1, S-2, BR-03)
+    ✕ TEST-F11-05a: entry วันที่ วันนี้−8 → PATCH และ DELETE ได้ 409 Conflict; DB เดิม (2 ms)
+    ✕ TEST-F11-05b: entry วันที่ วันนี้−7 (ขอบ) → PATCH 200, DELETE 204 (1 ms)
+  TEST-F11-06 — goal ที่จบแล้ว (AC-F11-06, S-1, BR-05)
+    ✕ TEST-F11-06: end_date = เมื่อวาน, entry เมื่อวาน (อยู่ในหน้าต่าง 7 วัน) → PATCH และ DELETE 409; DB เดิม (2 ms)
+  TEST-F11-07 — ลบแล้วบันทึกวันเดิมใหม่ได้ (AC-F11-07, S-9, BR-01)
+    ✕ TEST-F11-07: DELETE 204 ไม่มี body, แถวหายจาก DB; POST entry วันเดิม → 201 (1 ms)
+  TEST-F11-08 — สิทธิ์และ ownership (AC-F11-08, BR-08, NFR-01)
+    ✕ TEST-F11-08a: PM เรียก PATCH และ DELETE → 403 ทั้งคู่; entry ไม่เปลี่ยน (1 ms)
+    ✕ TEST-F11-08b: Participant B เรียกกับ entry ของ A → 404 ทั้งคู่; entry ของ A ไม่เปลี่ยนและยังอยู่ (1 ms)
+    ✕ TEST-F11-08c: entry อยู่ goal อื่น หรือ entryId ผิดรูปแบบ/ไม่มี → 404 ทุกกรณี; entry ใน goalY ไม่เปลี่ยน (1 ms)
+
+  ● TEST-F11-01 — แก้ minutes สำเร็จ (AC-F11-01) › TEST-F11-01: 200, entry.minutes ใหม่, ไม่มี field ต้องห้าม; DB เก็บค่าใหม่และ updated_at ใหม่กว่าเดิม
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      114 |     const res = await patchEntry(aCookie, goalId, entryId, { minutes: 45 });
+      115 |
+    > 116 |     expect(res.status).toBe(200);
+          |                        ^
+      117 |     expect(res.body.entry).toEqual({ id: entryId, entry_date: today, minutes: 45 });
+      118 |     expect(res.body.entry).not.toHaveProperty('goal_id');
+      119 |     expect(res.body.entry).not.toHaveProperty('user_id');
+
+      at Object.toBe (tests/entry-edit.test.js:116:24)
+
+  ● TEST-F11-02 — progress หลังแก้/ลบ (AC-F11-02, BR-06) › TEST-F11-02a: แก้ entry 60 เป็น 80 → progress total=170, percent=85
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      137 |
+      138 |     const res = await patchEntry(aCookie, goalId, e60, { minutes: 80 });
+    > 139 |     expect(res.status).toBe(200);
+          |                        ^
+      140 |
+      141 |     const prog = await getProgress(aCookie, goalId);
+      142 |     expect(prog.status).toBe(200);
+
+      at Object.toBe (tests/entry-edit.test.js:139:24)
+
+  ● TEST-F11-02 — progress หลังแก้/ลบ (AC-F11-02, BR-06) › TEST-F11-02b: ลบ entry 90 → progress total=60, percent=30; entry ที่ลบไม่อยู่ใน GET entries
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 204
+    Received: 404
+
+      152 |
+      153 |     const del = await deleteEntry(aCookie, goalId, e90);
+    > 154 |     expect(del.status).toBe(204);
+          |                        ^
+      155 |
+      156 |     const prog = await getProgress(aCookie, goalId);
+      157 |     expect(prog.body.progress.total_minutes).toBe(60);
+
+      at Object.toBe (tests/entry-edit.test.js:154:24)
+
+  ● TEST-F11-03 — ตรวจค่า minutes (AC-F11-03, BR-02) › TEST-F11-03a: ทศนิยม / string / null / ไม่มี field → 400 "integer required"; DB = 30
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      177 |     for (const body of bodies) {
+      178 |       const res = await patchEntry(aCookie, goalId, entryId, body);
+    > 179 |       expect(res.status).toBe(400);
+          |                          ^
+      180 |       expect(res.body.error).toBe('Bad Request');
+      181 |       expect(res.body.fields.minutes).toBe('integer required');
+      182 |     }
+
+      at Object.toBe (tests/entry-edit.test.js:179:26)
+
+  ● TEST-F11-03 — ตรวจค่า minutes (AC-F11-03, BR-02) › TEST-F11-03b: 0, -5, 9, 121 → 400 "out of template range"; DB = 30
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      187 |     for (const minutes of [0, -5, 9, 121]) {
+      188 |       const res = await patchEntry(aCookie, goalId, entryId, { minutes });
+    > 189 |       expect(res.status).toBe(400);
+          |                          ^
+      190 |       expect(res.body.fields.minutes).toBe('out of template range');
+      191 |     }
+      192 |     expect((await dbEntry(entryId)).minutes).toBe(30);
+
+      at Object.toBe (tests/entry-edit.test.js:189:26)
+
+  ● TEST-F11-03 — ตรวจค่า minutes (AC-F11-03, BR-02) › TEST-F11-03c: ค่าขอบ 10 และ 120 → 200 ทั้งคู่; DB = 120
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      195 |   test('TEST-F11-03c: ค่าขอบ 10 และ 120 → 200 ทั้งคู่; DB = 120', async () => {
+      196 |     const lo = await patchEntry(aCookie, goalId, entryId, { minutes: 10 });
+    > 197 |     expect(lo.status).toBe(200);
+          |                       ^
+      198 |     const hi = await patchEntry(aCookie, goalId, entryId, { minutes: 120 });
+      199 |     expect(hi.status).toBe(200);
+      200 |     expect((await dbEntry(entryId)).minutes).toBe(120);
+
+      at Object.toBe (tests/entry-edit.test.js:197:23)
+
+  ● TEST-F11-04 — แก้ field อื่นไม่ได้ (AC-F11-04, S-4, S-13) › TEST-F11-04a: ส่ง entry_date หรือ goal_id → 400 "not editable"; DB เดิม
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      213 |   test('TEST-F11-04a: ส่ง entry_date หรือ goal_id → 400 "not editable"; DB เดิม', async () => {
+      214 |     const r1 = await patchEntry(aCookie, goalId, entryId, { minutes: 40, entry_date: addDays(today, -1) });
+    > 215 |     expect(r1.status).toBe(400);
+          |                       ^
+      216 |     expect(r1.body.fields.entry_date).toBe('not editable');
+      217 |
+      218 |     const r2 = await patchEntry(aCookie, goalId, entryId, { minutes: 40, goal_id: 999 });
+
+      at Object.toBe (tests/entry-edit.test.js:215:23)
+
+  ● TEST-F11-04 — แก้ field อื่นไม่ได้ (AC-F11-04, S-4, S-13) › TEST-F11-04b: minutes ผิดและมี entry_date เกินมา → 400 มีทั้ง fields.minutes และ fields.entry_date
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 404
+
+      228 |   test('TEST-F11-04b: minutes ผิดและมี entry_date เกินมา → 400 มีทั้ง fields.minutes และ fields.entry_date', async () => {
+      229 |     const res = await patchEntry(aCookie, goalId, entryId, { minutes: 1.5, entry_date: addDays(today, -1) });
+    > 230 |     expect(res.status).toBe(400);
+          |                        ^
+      231 |     expect(res.body.fields.minutes).toBe('integer required');
+      232 |     expect(res.body.fields.entry_date).toBe('not editable');
+      233 |     const row = await dbEntry(entryId);
+
+      at Object.toBe (tests/entry-edit.test.js:230:24)
+
+  ● TEST-F11-05 — ช่วงที่แก้/ลบได้ 7 วัน (AC-F11-05, S-1, S-2, BR-03) › TEST-F11-05a: entry วันที่ วันนี้−8 → PATCH และ DELETE ได้ 409 Conflict; DB เดิม
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 404
+
+      244 |
+      245 |     const p = await patchEntry(aCookie, goalId, entryId, { minutes: 50 });
+    > 246 |     expect(p.status).toBe(409);
+          |                      ^
+      247 |     expect(p.body).toEqual({ error: 'Conflict' });
+      248 |
+      249 |     const d = await deleteEntry(aCookie, goalId, entryId);
+
+      at Object.toBe (tests/entry-edit.test.js:246:22)
+
+  ● TEST-F11-05 — ช่วงที่แก้/ลบได้ 7 วัน (AC-F11-05, S-1, S-2, BR-03) › TEST-F11-05b: entry วันที่ วันนี้−7 (ขอบ) → PATCH 200, DELETE 204
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      261 |
+      262 |     const p = await patchEntry(aCookie, goalId, entryId, { minutes: 50 });
+    > 263 |     expect(p.status).toBe(200);
+          |                      ^
+      264 |     expect(p.body.entry.minutes).toBe(50);
+      265 |
+      266 |     const d = await deleteEntry(aCookie, goalId, entryId);
+
+      at Object.toBe (tests/entry-edit.test.js:263:22)
+
+  ● TEST-F11-06 — goal ที่จบแล้ว (AC-F11-06, S-1, BR-05) › TEST-F11-06: end_date = เมื่อวาน, entry เมื่อวาน (อยู่ในหน้าต่าง 7 วัน) → PATCH และ DELETE 409; DB เดิม
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 404
+
+      278 |
+      279 |     const p = await patchEntry(aCookie, goalId, entryId, { minutes: 50 });
+    > 280 |     expect(p.status).toBe(409);
+          |                      ^
+      281 |     expect(p.body).toEqual({ error: 'Conflict' });
+      282 |
+      283 |     const d = await deleteEntry(aCookie, goalId, entryId);
+
+      at Object.toBe (tests/entry-edit.test.js:280:22)
+
+  ● TEST-F11-07 — ลบแล้วบันทึกวันเดิมใหม่ได้ (AC-F11-07, S-9, BR-01) › TEST-F11-07: DELETE 204 ไม่มี body, แถวหายจาก DB; POST entry วันเดิม → 201
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 204
+    Received: 404
+
+      298 |
+      299 |     const del = await deleteEntry(aCookie, goalId, entryId);
+    > 300 |     expect(del.status).toBe(204);
+          |                        ^
+      301 |     expect(del.text).toBe('');
+      302 |     expect(await dbEntry(entryId)).toBeUndefined();
+      303 |
+
+      at Object.toBe (tests/entry-edit.test.js:300:24)
+
+  ● TEST-F11-08 — สิทธิ์และ ownership (AC-F11-08, BR-08, NFR-01) › TEST-F11-08a: PM เรียก PATCH และ DELETE → 403 ทั้งคู่; entry ไม่เปลี่ยน
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 403
+    Received: 404
+
+      318 |
+      319 |     const p = await patchEntry(pmCookie, goalId, entryId, { minutes: 50 });
+    > 320 |     expect(p.status).toBe(403);
+          |                      ^
+      321 |     const d = await deleteEntry(pmCookie, goalId, entryId);
+      322 |     expect(d.status).toBe(403);
+      323 |
+
+      at Object.toBe (tests/entry-edit.test.js:320:22)
+
+  ● TEST-F11-08 — สิทธิ์และ ownership (AC-F11-08, BR-08, NFR-01) › TEST-F11-08b: Participant B เรียกกับ entry ของ A → 404 ทั้งคู่; entry ของ A ไม่เปลี่ยนและยังอยู่
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      331 |     // positive control: เจ้าของแก้ได้ (พิสูจน์ว่า route มีอยู่จริง ไม่ใช่ 404 เพราะไม่มี route)
+      332 |     const own = await patchEntry(aCookie, goalId, entryId, { minutes: 35 });
+    > 333 |     expect(own.status).toBe(200);
+          |                        ^
+      334 |
+      335 |     const p = await patchEntry(bCookie, goalId, entryId, { minutes: 50 });
+      336 |     expect(p.status).toBe(404);
+
+      at Object.toBe (tests/entry-edit.test.js:333:24)
+
+  ● TEST-F11-08 — สิทธิ์และ ownership (AC-F11-08, BR-08, NFR-01) › TEST-F11-08c: entry อยู่ goal อื่น หรือ entryId ผิดรูปแบบ/ไม่มี → 404 ทุกกรณี; entry ใน goalY ไม่เปลี่ยน
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 200
+    Received: 404
+
+      351 |     // positive control: แก้ผ่าน goal ที่ถูกต้องได้ (พิสูจน์ว่า route มีอยู่จริง)
+      352 |     const ok = await patchEntry(aCookie, goalY, entryInY, { minutes: 35 });
+    > 353 |     expect(ok.status).toBe(200);
+          |                       ^
+      354 |
+      355 |     const cross = await patchEntry(aCookie, goalX, entryInY, { minutes: 50 });
+      356 |     expect(cross.status).toBe(404);
+
+      at Object.toBe (tests/entry-edit.test.js:353:23)
+
+FAIL tests/rbac.test.js
+  TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01)
+    ✓ TEST-F02-01a: get /api/auth/me ไม่มี cookie → 401 Unauthorized (2 ms)
+    ✓ TEST-F02-01a: post /api/auth/logout ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01a: get /__test/pm-only ไม่มี cookie → 401 Unauthorized
+    ✓ TEST-F02-01a: get /__test/participant-only ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01a: get /__test/items/1 ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01a: post /api/templates ไม่มี cookie → 401 Unauthorized
+    ✓ TEST-F02-01a: get /api/templates ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01a: post /api/goals ไม่มี cookie → 401 Unauthorized
+    ✓ TEST-F02-01a: get /api/goals ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01a: get /api/goals/1 ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01a: post /api/goals/1/entries ไม่มี cookie → 401 Unauthorized
+    ✓ TEST-F02-01a: get /api/goals/1/progress ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✓ TEST-F02-01a: get /api/goals/1/entries ไม่มี cookie → 401 Unauthorized
+    ✕ TEST-F02-01a: patch /api/goals/1/entries/1 ไม่มี cookie → 401 Unauthorized (1 ms)
+    ✕ TEST-F02-01a: delete /api/goals/1/entries/1 ไม่มี cookie → 401 Unauthorized
+    ✓ TEST-F02-01b: get /api/auth/me cookie ปลอม → 401
+    ✓ TEST-F02-01b: post /api/auth/logout cookie ปลอม → 401 (1 ms)
+    ✓ TEST-F02-01b: get /__test/pm-only cookie ปลอม → 401
+    ✓ TEST-F02-01b: get /__test/participant-only cookie ปลอม → 401
+    ✓ TEST-F02-01b: get /__test/items/1 cookie ปลอม → 401
+    ✓ TEST-F02-01b: post /api/templates cookie ปลอม → 401
+    ✓ TEST-F02-01b: get /api/templates cookie ปลอม → 401 (1 ms)
+    ✓ TEST-F02-01b: post /api/goals cookie ปลอม → 401
+    ✓ TEST-F02-01b: get /api/goals cookie ปลอม → 401 (1 ms)
+    ✓ TEST-F02-01b: get /api/goals/1 cookie ปลอม → 401
+    ✓ TEST-F02-01b: post /api/goals/1/entries cookie ปลอม → 401 (1 ms)
+    ✓ TEST-F02-01b: get /api/goals/1/progress cookie ปลอม → 401
+    ✓ TEST-F02-01b: get /api/goals/1/entries cookie ปลอม → 401
+    ✕ TEST-F02-01b: patch /api/goals/1/entries/1 cookie ปลอม → 401
+    ✕ TEST-F02-01b: delete /api/goals/1/entries/1 cookie ปลอม → 401 (1 ms)
+  TEST-F02-02 — บังคับ role (AC-F02-02, BR-07/BR-08)
+    ✓ TEST-F02-02a: Participant เรียก endpoint เฉพาะ PM → 403 (3 ms)
+    ✓ TEST-F02-02b: PM เรียก endpoint เฉพาะ Participant → 403 (2 ms)
+    ✓ TEST-F02-02c: PM เรียก endpoint ของ PM → 200 (2 ms)
+  TEST-F02-03 — ความเป็นเจ้าของข้อมูล (AC-F02-03, BR-08)
+    ✓ TEST-F02-03a: เจ้าของทรัพยากร (Participant A) → 200 (1 ms)
+    ✓ TEST-F02-03b: Participant คนอื่น (B) → 404 ไม่ยืนยันว่าข้อมูลมีอยู่ (2 ms)
+    ✓ TEST-F02-03c: PM อ่านทรัพยากรของ Participant → 403 (1 ms)
+  TEST-F02-04 — error ที่ปลอดภัย (AC-F02-04, NFR-06)
+    ✓ TEST-F02-04a: error ที่ไม่คาดคิด → 500 ข้อความกลาง ไม่มี SQL/stack/message ภายใน (1 ms)
+    ✓ TEST-F02-04b: JSON พัง → 400 ข้อความคงที่ ไม่มีข้อความ parse ของ library (1 ms)
+    ✓ TEST-F02-04c: route ที่ไม่มีอยู่ → 404 JSON ข้อความคงที่ (1 ms)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: patch /api/goals/1/entries/1 ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      89 |     const res = await request(app)[method](path);
+      90 |
+    > 91 |     expect(res.status).toBe(401);
+         |                        ^
+      92 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      93 |   });
+      94 |
+
+      at toBe (tests/rbac.test.js:91:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01a: delete /api/goals/1/entries/1 ไม่มี cookie → 401 Unauthorized
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+      89 |     const res = await request(app)[method](path);
+      90 |
+    > 91 |     expect(res.status).toBe(401);
+         |                        ^
+      92 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      93 |   });
+      94 |
+
+      at toBe (tests/rbac.test.js:91:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: patch /api/goals/1/entries/1 cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+       96 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+       97 |
+    >  98 |     expect(res.status).toBe(401);
+          |                        ^
+       99 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      100 |   });
+      101 | });
+
+      at toBe (tests/rbac.test.js:98:24)
+
+  ● TEST-F02-01 — ไม่มี session ต้องได้ 401 (AC-F02-01, NFR-01) › TEST-F02-01b: delete /api/goals/1/entries/1 cookie ปลอม → 401
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 401
+    Received: 404
+
+       96 |     const res = await request(app)[method](path).set('Cookie', 'connect.sid=s%3Aforged.invalidsignature');
+       97 |
+    >  98 |     expect(res.status).toBe(401);
+          |                        ^
+       99 |     expect(res.body).toEqual({ error: 'Unauthorized' });
+      100 |   });
+      101 | });
+
+      at toBe (tests/rbac.test.js:98:24)
+
+FAIL tests/validate.test.js
+  TEST-F03-U1 — validateTemplate (S-2, S-3, S-1)
+    ✓ ข้อมูลถูกต้อง → ok
+    ✓ min_value=0 → ไม่ผ่าน (1 ms)
+    ✓ min_value=961 → ไม่ผ่าน
+    ✓ min_value=-1 → ไม่ผ่าน
+    ✓ min_value=10.5 → ไม่ผ่าน
+    ✓ min_value="10" → ไม่ผ่าน
+    ✓ min_value=null → ไม่ผ่าน
+    ✓ min_value=undefined → ไม่ผ่าน
+    ✓ ขอบเขต 1 และ 960 ผ่าน
+    ✓ max < min → ไม่ผ่านที่ max_value
+    ✓ name="" → ไม่ผ่าน
+    ✓ name="   " → ไม่ผ่าน
+    ✓ name="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" → ไม่ผ่าน
+    ✓ name=5 → ไม่ผ่าน
+    ✓ name=undefined → ไม่ผ่าน (1 ms)
+    ✓ name 100 ตัวอักษรผ่าน
+    ✓ unit ที่ไม่ใช่ minutes ไม่ผ่าน; minutes ผ่าน
+  TEST-F03-U1 — validateGoal (S-5)
+    ✓ ข้อมูลถูกต้อง → ok
+    ✓ target_minutes=0 → ไม่ผ่าน
+    ✓ target_minutes=-5 → ไม่ผ่าน
+    ✓ target_minutes=1.5 → ไม่ผ่าน
+    ✓ target_minutes="100" → ไม่ผ่าน
+    ✓ target_minutes=null → ไม่ผ่าน
+    ✓ target_minutes=undefined → ไม่ผ่าน
+    ✓ target_minutes = 1 ผ่าน
+    ✓ end_date="2026-02-30" → ไม่ผ่าน
+    ✓ end_date="x" → ไม่ผ่าน
+    ✓ end_date="2026-1-5" → ไม่ผ่าน
+    ✓ end_date=undefined → ไม่ผ่าน
+    ✓ end_date=20261120 → ไม่ผ่าน
+    ✓ end ก่อน start → ไม่ผ่าน; end = start ผ่าน (1 ms)
+    ✓ start ก่อนวันนี้ → ไม่ผ่าน; start = วันนี้ ผ่าน
+    ✓ ระยะ 365 วันผ่าน 366 วันไม่ผ่าน (นับรวมปลาย)
+  TEST-F03-U1 — dates (S-11)
+    ✓ daysInclusive นับรวมวันปลายทั้งสอง
+    ✓ isValidDate
+    ✓ todayBangkok: 17:00Z ของวันก่อนหน้าคือเที่ยงคืน Bangkok (วันถัดไป)
+  TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13)
+    ✕ minutes=10 (ในช่วง/ขอบ) → ok
+    ✕ minutes=11 (ในช่วง/ขอบ) → ok
+    ✕ minutes=60 (ในช่วง/ขอบ) → ok
+    ✕ minutes=119 (ในช่วง/ขอบ) → ok (1 ms)
+    ✕ minutes=120 (ในช่วง/ขอบ) → ok
+    ✕ minutes=-1 (จำนวนเต็มนอกช่วง) → "out of template range"
+    ✕ minutes=0 (จำนวนเต็มนอกช่วง) → "out of template range"
+    ✕ minutes=1 (จำนวนเต็มนอกช่วง) → "out of template range"
+    ✕ minutes=9 (จำนวนเต็มนอกช่วง) → "out of template range"
+    ✕ minutes=121 (จำนวนเต็มนอกช่วง) → "out of template range"
+    ✕ minutes=1.5 (ไม่ใช่จำนวนเต็ม) → "integer required"
+    ✕ minutes="60" (ไม่ใช่จำนวนเต็ม) → "integer required"
+    ✕ minutes=null (ไม่ใช่จำนวนเต็ม) → "integer required"
+    ✕ minutes=undefined (ไม่ใช่จำนวนเต็ม) → "integer required"
+    ✕ minutes=true (ไม่ใช่จำนวนเต็ม) → "integer required"
+    ✕ minutes=NaN (ไม่ใช่จำนวนเต็ม) → "integer required"
+    ✕ ไม่มี field minutes (body ว่าง / ไม่มี body) → "integer required"
+    ✕ field เกิน (entry_date, goal_id) → "not editable" แม้ minutes ถูกต้อง
+    ✕ S-13: minutes ผิดและมี field เกิน → รายงานทุก field พร้อมกัน
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=10 (ในช่วง/ขอบ) → ok
+
+    TypeError: validateEntryUpdate is not a function
+
+      85 |
+      86 |   test.each([[10], [11], [60], [119], [120]])('minutes=%p (ในช่วง/ขอบ) → ok', (v) => {
+    > 87 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      88 |     expect(r.ok).toBe(true);
+      89 |     expect(r.fields).toEqual({});
+      90 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:87:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=11 (ในช่วง/ขอบ) → ok
+
+    TypeError: validateEntryUpdate is not a function
+
+      85 |
+      86 |   test.each([[10], [11], [60], [119], [120]])('minutes=%p (ในช่วง/ขอบ) → ok', (v) => {
+    > 87 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      88 |     expect(r.ok).toBe(true);
+      89 |     expect(r.fields).toEqual({});
+      90 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:87:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=60 (ในช่วง/ขอบ) → ok
+
+    TypeError: validateEntryUpdate is not a function
+
+      85 |
+      86 |   test.each([[10], [11], [60], [119], [120]])('minutes=%p (ในช่วง/ขอบ) → ok', (v) => {
+    > 87 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      88 |     expect(r.ok).toBe(true);
+      89 |     expect(r.fields).toEqual({});
+      90 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:87:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=119 (ในช่วง/ขอบ) → ok
+
+    TypeError: validateEntryUpdate is not a function
+
+      85 |
+      86 |   test.each([[10], [11], [60], [119], [120]])('minutes=%p (ในช่วง/ขอบ) → ok', (v) => {
+    > 87 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      88 |     expect(r.ok).toBe(true);
+      89 |     expect(r.fields).toEqual({});
+      90 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:87:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=120 (ในช่วง/ขอบ) → ok
+
+    TypeError: validateEntryUpdate is not a function
+
+      85 |
+      86 |   test.each([[10], [11], [60], [119], [120]])('minutes=%p (ในช่วง/ขอบ) → ok', (v) => {
+    > 87 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      88 |     expect(r.ok).toBe(true);
+      89 |     expect(r.fields).toEqual({});
+      90 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:87:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=-1 (จำนวนเต็มนอกช่วง) → "out of template range"
+
+    TypeError: validateEntryUpdate is not a function
+
+      91 |
+      92 |   test.each([[-1], [0], [1], [9], [121]])('minutes=%p (จำนวนเต็มนอกช่วง) → "out of template range"', (v) => {
+    > 93 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      94 |     expect(r.ok).toBe(false);
+      95 |     expect(r.fields).toEqual({ minutes: 'out of template range' });
+      96 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:93:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=0 (จำนวนเต็มนอกช่วง) → "out of template range"
+
+    TypeError: validateEntryUpdate is not a function
+
+      91 |
+      92 |   test.each([[-1], [0], [1], [9], [121]])('minutes=%p (จำนวนเต็มนอกช่วง) → "out of template range"', (v) => {
+    > 93 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      94 |     expect(r.ok).toBe(false);
+      95 |     expect(r.fields).toEqual({ minutes: 'out of template range' });
+      96 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:93:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=1 (จำนวนเต็มนอกช่วง) → "out of template range"
+
+    TypeError: validateEntryUpdate is not a function
+
+      91 |
+      92 |   test.each([[-1], [0], [1], [9], [121]])('minutes=%p (จำนวนเต็มนอกช่วง) → "out of template range"', (v) => {
+    > 93 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      94 |     expect(r.ok).toBe(false);
+      95 |     expect(r.fields).toEqual({ minutes: 'out of template range' });
+      96 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:93:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=9 (จำนวนเต็มนอกช่วง) → "out of template range"
+
+    TypeError: validateEntryUpdate is not a function
+
+      91 |
+      92 |   test.each([[-1], [0], [1], [9], [121]])('minutes=%p (จำนวนเต็มนอกช่วง) → "out of template range"', (v) => {
+    > 93 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      94 |     expect(r.ok).toBe(false);
+      95 |     expect(r.fields).toEqual({ minutes: 'out of template range' });
+      96 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:93:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=121 (จำนวนเต็มนอกช่วง) → "out of template range"
+
+    TypeError: validateEntryUpdate is not a function
+
+      91 |
+      92 |   test.each([[-1], [0], [1], [9], [121]])('minutes=%p (จำนวนเต็มนอกช่วง) → "out of template range"', (v) => {
+    > 93 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+         |               ^
+      94 |     expect(r.ok).toBe(false);
+      95 |     expect(r.fields).toEqual({ minutes: 'out of template range' });
+      96 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:93:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=1.5 (ไม่ใช่จำนวนเต็ม) → "integer required"
+
+    TypeError: validateEntryUpdate is not a function
+
+       97 |
+       98 |   test.each([[1.5], ['60'], [null], [undefined], [true], [NaN]])('minutes=%p (ไม่ใช่จำนวนเต็ม) → "integer required"', (v) => {
+    >  99 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+          |               ^
+      100 |     expect(r.ok).toBe(false);
+      101 |     expect(r.fields).toEqual({ minutes: 'integer required' });
+      102 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:99:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes="60" (ไม่ใช่จำนวนเต็ม) → "integer required"
+
+    TypeError: validateEntryUpdate is not a function
+
+       97 |
+       98 |   test.each([[1.5], ['60'], [null], [undefined], [true], [NaN]])('minutes=%p (ไม่ใช่จำนวนเต็ม) → "integer required"', (v) => {
+    >  99 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+          |               ^
+      100 |     expect(r.ok).toBe(false);
+      101 |     expect(r.fields).toEqual({ minutes: 'integer required' });
+      102 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:99:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=null (ไม่ใช่จำนวนเต็ม) → "integer required"
+
+    TypeError: validateEntryUpdate is not a function
+
+       97 |
+       98 |   test.each([[1.5], ['60'], [null], [undefined], [true], [NaN]])('minutes=%p (ไม่ใช่จำนวนเต็ม) → "integer required"', (v) => {
+    >  99 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+          |               ^
+      100 |     expect(r.ok).toBe(false);
+      101 |     expect(r.fields).toEqual({ minutes: 'integer required' });
+      102 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:99:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=undefined (ไม่ใช่จำนวนเต็ม) → "integer required"
+
+    TypeError: validateEntryUpdate is not a function
+
+       97 |
+       98 |   test.each([[1.5], ['60'], [null], [undefined], [true], [NaN]])('minutes=%p (ไม่ใช่จำนวนเต็ม) → "integer required"', (v) => {
+    >  99 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+          |               ^
+      100 |     expect(r.ok).toBe(false);
+      101 |     expect(r.fields).toEqual({ minutes: 'integer required' });
+      102 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:99:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=true (ไม่ใช่จำนวนเต็ม) → "integer required"
+
+    TypeError: validateEntryUpdate is not a function
+
+       97 |
+       98 |   test.each([[1.5], ['60'], [null], [undefined], [true], [NaN]])('minutes=%p (ไม่ใช่จำนวนเต็ม) → "integer required"', (v) => {
+    >  99 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+          |               ^
+      100 |     expect(r.ok).toBe(false);
+      101 |     expect(r.fields).toEqual({ minutes: 'integer required' });
+      102 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:99:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › minutes=NaN (ไม่ใช่จำนวนเต็ม) → "integer required"
+
+    TypeError: validateEntryUpdate is not a function
+
+       97 |
+       98 |   test.each([[1.5], ['60'], [null], [undefined], [true], [NaN]])('minutes=%p (ไม่ใช่จำนวนเต็ม) → "integer required"', (v) => {
+    >  99 |     const r = validateEntryUpdate({ minutes: v }, tpl);
+          |               ^
+      100 |     expect(r.ok).toBe(false);
+      101 |     expect(r.fields).toEqual({ minutes: 'integer required' });
+      102 |   });
+
+      at validateEntryUpdate (tests/validate.test.js:99:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › ไม่มี field minutes (body ว่าง / ไม่มี body) → "integer required"
+
+    TypeError: validateEntryUpdate is not a function
+
+      103 |
+      104 |   test('ไม่มี field minutes (body ว่าง / ไม่มี body) → "integer required"', () => {
+    > 105 |     expect(validateEntryUpdate({}, tpl).fields).toEqual({ minutes: 'integer required' });
+          |            ^
+      106 |     expect(validateEntryUpdate(undefined, tpl).fields).toEqual({ minutes: 'integer required' });
+      107 |   });
+      108 |
+
+      at Object.validateEntryUpdate (tests/validate.test.js:105:12)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › field เกิน (entry_date, goal_id) → "not editable" แม้ minutes ถูกต้อง
+
+    TypeError: validateEntryUpdate is not a function
+
+      108 |
+      109 |   test('field เกิน (entry_date, goal_id) → "not editable" แม้ minutes ถูกต้อง', () => {
+    > 110 |     const r = validateEntryUpdate({ minutes: 30, entry_date: '2026-11-10', goal_id: 5 }, tpl);
+          |               ^
+      111 |     expect(r.ok).toBe(false);
+      112 |     expect(r.fields).toEqual({ entry_date: 'not editable', goal_id: 'not editable' });
+      113 |   });
+
+      at Object.validateEntryUpdate (tests/validate.test.js:110:15)
+
+  ● TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13) › S-13: minutes ผิดและมี field เกิน → รายงานทุก field พร้อมกัน
+
+    TypeError: validateEntryUpdate is not a function
+
+      114 |
+      115 |   test('S-13: minutes ผิดและมี field เกิน → รายงานทุก field พร้อมกัน', () => {
+    > 116 |     const r = validateEntryUpdate({ minutes: 1.5, entry_date: '2026-11-10' }, tpl);
+          |               ^
+      117 |     expect(r.ok).toBe(false);
+      118 |     expect(r.fields).toEqual({ minutes: 'integer required', entry_date: 'not editable' });
+      119 |   });
+
+      at Object.validateEntryUpdate (tests/validate.test.js:116:15)
+
+PASS tests/auth.test.js
+  TEST-F01-01 — login สำเร็จ (AC-F01-01)
+    ✓ TEST-F01-01: ข้อมูลถูกต้อง → 200 ได้ {id, username, role} + cookie HttpOnly (5 ms)
+  TEST-F01-02 — login ล้มเหลว (AC-F01-02)
+    ✓ TEST-F01-02a: รหัสผ่านผิด → 401 ข้อความทั่วไป (1 ms)
+    ✓ TEST-F01-02b: ไม่มี username นี้ → 401 และ body เหมือน 02a ทุกตัวอักษร (51 ms)
+    ✓ TEST-F01-02c: ไม่ส่ง password → 400 (1 ms)
+    ✓ TEST-F01-02c: password ว่าง → 400
+    ✓ TEST-F01-02c: password เป็นตัวเลข → 400 (1 ms)
+    ✓ TEST-F01-02c: ไม่ส่ง username → 400
+  TEST-F01-03 — ผู้ใช้ปัจจุบัน (AC-F01-03)
+    ✓ TEST-F01-03: GET /me ด้วย session ที่ถูกต้อง → 200 ตรงกับผู้ใช้ที่ login (3 ms)
+  TEST-F01-04 — logout (AC-F01-04)
+    ✓ TEST-F01-04a: logout → 204 แล้วใช้ cookie เดิมเรียก /me ได้ 401 (3 ms)
+    ✓ TEST-F01-04b: logout แล้วแถวของ session ถูกลบจากตาราง session (3 ms)
+  TEST-F01-05 — อายุ session (AC-F01-05, NFR-03)
+    ✓ TEST-F01-05a: session ที่ expire เลยเวลาแล้ว → 401 (2 ms)
+    ✓ TEST-F01-05b: cookie ที่ออกตอน login มีอายุ 8 ชม. (28800 วินาที ±5) (2 ms)
+  TEST-F01-06 — เก็บรหัสผ่านเป็น hash (AC-F01-06, NFR-02)
+    ✓ TEST-F01-06: password_hash ของผู้ใช้จาก seed ไม่ใช่รหัสผ่านจริง และเป็น bcrypt (195 ms)
+  TEST-F01-07 — session id ใหม่ทุกครั้งที่ login (AC-F01-07)
+    ✓ TEST-F01-07: login ซ้ำขณะถือ cookie เดิม → ได้ cookie/sid ใหม่ที่ต่างจากเดิม (4 ms)
+
+PASS tests/persistence.test.js
+  TEST-F07-01 — NFR-04 data persistence across restart
+    ✓ TEST-F07-01: row written to DB persists after full pool shutdown and reconnect (5 ms)
+  TEST-F07-02 — NFR-05 / BR-01 unique constraint (goal_id, entry_date)
+    ✓ TEST-F07-02a: initial habit entry insert succeeds (3 ms)
+    ✓ TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code 23505 (2 ms)
+    ✓ TEST-F07-02c: different entry dates on the same goal both succeed (3 ms)
+  TEST-F07-03 — Seed data idempotency (AC-F07-03)
+    ✓ TEST-F07-03: running seed logic twice does not duplicate records (294 ms)
+  TEST-F07-04 — habit_entries minutes boundaries (BR-02, D-07, AC-F07-04)
+    ✓ TEST-F07-04a: minutes = 0 is rejected by DB check constraint with code 23514 (2 ms)
+    ✓ TEST-F07-04b: minutes = 1 (minimum allowed) is accepted (2 ms)
+    ✓ TEST-F07-04c: minutes = 960 (platform ceiling) is accepted (2 ms)
+    ✓ TEST-F07-04d: minutes = 961 (above platform ceiling) is rejected with code 23514 (2 ms)
+  TEST-F07-05 — goals active status constraint (BR-05, AC-F07-05)
+    ✓ TEST-F07-05a: multiple ended goals for the same user and template are allowed (3 ms)
+    ✓ TEST-F07-05b: second active goal on the same template is rejected with code 23505 (1 ms)
+
+PASS tests/entries.test.js
+  TEST-F05-01 — บันทึก entry สำเร็จ (AC-F05-01)
+    ✓ TEST-F05-01: 201, response มี id/entry_date/minutes ไม่มี goal_id/user_id/created_at/updated_at; แถวอยู่ใน DB (3 ms)
+  TEST-F05-02 — ซ้ำวัน + concurrent (AC-F05-02, BR-01, NFR-05)
+    ✓ TEST-F05-02a: บันทึกซ้ำวันเดียวกัน → 409 Conflict; DB ยังมี 1 แถว (4 ms)
+    ✓ TEST-F05-02b: ส่ง 5 request พร้อมกัน → สำเร็จ 1 (201), ที่เหลือ 409; ไม่มี 500; DB มี 1 แถว (9 ms)
+  TEST-F05-03 — validation minutes (AC-F05-03, BR-02)
+    ✓ TEST-F05-03a: minutes = ทศนิยม → 400 มี fields.minutes (2 ms)
+    ✓ TEST-F05-03a: minutes = string → 400 มี fields.minutes (2 ms)
+    ✓ TEST-F05-03a: minutes = null → 400 มี fields.minutes (1 ms)
+    ✓ TEST-F05-03a: minutes = ไม่ส่ง → 400 มี fields.minutes (1 ms)
+    ✓ TEST-F05-03a: minutes = ติดลบ → 400 มี fields.minutes (2 ms)
+    ✓ TEST-F05-03a: minutes = ศูนย์ → 400 มี fields.minutes (1 ms)
+    ✓ TEST-F05-03b: minutes นอกช่วง template (min=10,max=120): 9 → 400, 121 → 400, 10 → 201, 120 → 201 (5 ms)
+  TEST-F05-04 — validation entry_date (AC-F05-04, BR-03)
+    ✓ TEST-F05-04a: entry_date = พรุ่งนี้ (อนาคต) → 400 fields.entry_date (2 ms)
+    ✓ TEST-F05-04b: entry_date = วันนี้ − 8 วัน (เกิน 7 วัน) → 400 fields.entry_date (1 ms)
+    ✓ TEST-F05-04c: entry_date ก่อน start_date ของ goal → 400 fields.entry_date (1 ms)
+    ✓ TEST-F05-04d: entry_date รูปแบบผิด/วันที่ไม่มีจริง → 400 fields.entry_date (2 ms)
+    ✓ TEST-F05-04e: entry_date = วันนี้ (ขอบ) → 201 (2 ms)
+    ✓ TEST-F05-04f: entry_date = วันนี้ − 7 วัน (ขอบล่าง 7 วัน) และอยู่ใน goal period → 201 (1 ms)
+  TEST-F05-05 — goal ended (AC-F05-05, BR-05)
+    ✓ TEST-F05-05a: goal ที่ end_date เมื่อวาน → 409 Conflict (1 ms)
+    ✓ TEST-F05-05b: goal ที่ end_date = วันนี้ → 201 (ยังถือเป็น active) (1 ms)
+  TEST-F05-06 — RBAC สำหรับ POST entries (AC-F05-06, BR-08)
+    ✓ TEST-F05-06a: PM เรียก POST entries → 403 (2 ms)
+    ✓ TEST-F05-06b: Participant B เรียก POST entries ใต้ goal ของ A → 404 (1 ms)
+  TEST-F05-07 — ไม่มี session → 401 (NFR-01)
+    ✓ TEST-F05-07a: POST /api/goals/1/entries ไม่มี cookie → 401
+    ✓ TEST-F05-07b: GET /api/goals/1/progress ไม่มี cookie → 401 (1 ms)
+    ✓ TEST-F05-07c: GET /api/goals/1/entries ไม่มี cookie → 401
+  TEST-F06-01 — progress calculation (AC-F06-01, BR-06)
+    ✓ TEST-F06-01a: 2 entries รวม 150 min, target 200 → percent 75.0 (2 ms)
+    ✓ TEST-F06-01b: total_minutes > target → percent = 100.0 (capped), total_minutes = ค่าจริง (2 ms)
+    ✓ TEST-F06-01c: ไม่มี entry → total_minutes = 0, percent = 0.0 (1 ms)
+  TEST-F06-02 — entry history (AC-F06-02, FR-10)
+    ✓ TEST-F06-02: 3 entries เรียง entry_date DESC; ไม่มี goal_id/user_id/created_at/updated_at (2 ms)
+  TEST-F06-03 — RBAC สำหรับ GET progress/entries (AC-F06-03, BR-08)
+    ✓ TEST-F06-03a: PM เรียก GET progress และ GET entries → 403 ทั้งคู่ (1 ms)
+    ✓ TEST-F06-03b: Participant B เรียก endpoint ของ goal A → 404 ทั้งคู่ (2 ms)
+
+PASS tests/goals.test.js
+  TEST-F04-01 — สร้างเป้าหมาย (AC-F04-01)
+    ✓ TEST-F04-01: 201, active, เจ้าของ = ผู้ใช้, ไม่มี user_id ใน response (2 ms)
+  TEST-F04-02 — validation (AC-F04-02, BR-04)
+    ✓ TEST-F04-02a: target_minutes=0 → 400 (1 ms)
+    ✓ TEST-F04-02a: target_minutes=-5 → 400 (1 ms)
+    ✓ TEST-F04-02a: target_minutes=1.5 → 400 (5 ms)
+    ✓ TEST-F04-02a: target_minutes="100" → 400 (1 ms)
+    ✓ TEST-F04-02a: target_minutes=1 → 201 (2 ms)
+    ✓ TEST-F04-02b: end_date="2026-02-30" → 400 (1 ms)
+    ✓ TEST-F04-02b: end_date="x" → 400
+    ✓ TEST-F04-02b: end_date=undefined → 400 (1 ms)
+    ✓ TEST-F04-02b: start_date ผิดรูปแบบ → 400 (1 ms)
+    ✓ TEST-F04-02c: end ก่อน start → 400; end = start → 201 (2 ms)
+    ✓ TEST-F04-02d: start เมื่อวาน → 400; start วันนี้ → 201 (1 ms)
+    ✓ TEST-F04-02e: 366 วัน → 400; 365 วัน (นับรวมปลาย) → 201 (2 ms)
+  TEST-F04-03 — 1 active ต่อแม่แบบ (AC-F04-03, BR-05)
+    ✓ TEST-F04-03a: ซ้ำในแม่แบบเดียวกัน → 409 และจำนวนไม่เพิ่ม (5 ms)
+    ✓ TEST-F04-03b: คนละแม่แบบ → 201 (3 ms)
+    ✓ TEST-F04-03c: 5 คำขอพร้อมกัน → สำเร็จ 1 ที่เหลือ 409 ไม่มี 500 (8 ms)
+    ✓ TEST-F04-03d: goal เก่าที่ end_date ผ่านแล้ว (status ยัง active) ไม่ขวาง และถูกปรับเป็น ended (2 ms)
+    ✓ TEST-F04-03e: คนละผู้ใช้สร้างในแม่แบบเดียวกันได้ (3 ms)
+  TEST-F04-04 — แม่แบบไม่ถูกต้อง (AC-F04-04)
+    ✓ TEST-F04-04: template_id=999999 → 404 (1 ms)
+    ✓ TEST-F04-04: template_id="archived" → 404 (1 ms)
+    ✓ TEST-F04-04: template_id ไม่ใช่ตัวเลข → 400 (1 ms)
+  TEST-F04-05 — PM ถูกปฏิเสธ (AC-F04-05, BR-08)
+    ✓ TEST-F04-05: PM POST/GET /goals → 403 (1 ms)
+  TEST-F04-06 — ความเป็นเจ้าของ (AC-F04-06, BR-08)
+    ✓ TEST-F04-06a: รายการเห็นเฉพาะของตน (3 ms)
+    ✓ TEST-F04-06b: GET /goals/:id เจ้าของ 200 / คนอื่น 404 / PM 403 / id ไม่ใช่เลข 404 (4 ms)
+  TEST-F04-07 — สถานะคำนวณจากวันที่ (AC-F04-07, BR-05)
+    ✓ TEST-F04-07: end เมื่อวาน → ended; end วันนี้ → active (1 ms)
+  TEST-F04-08 — ต้อง login (NFR-01)
+    ✓ TEST-F04-08: post /api/goals → 401
+    ✓ TEST-F04-08: get /api/goals → 401 (1 ms)
+    ✓ TEST-F04-08: get /api/goals/1 → 401
+
+PASS tests/templates.test.js
+  TEST-F03-01 — PM สร้างแม่แบบ (AC-F03-01)
+    ✓ TEST-F03-01: 201, unit=minutes, บันทึกใน DB ด้วย created_by = PM (1 ms)
+  TEST-F03-02 — Participant สร้างไม่ได้ (AC-F03-02, BR-07)
+    ✓ TEST-F03-02: 403 และไม่มีแถวใหม่ (1 ms)
+  TEST-F03-03 — validation (AC-F03-03, BR-02, BR-09)
+    ✓ TEST-F03-03a: min_value=0 → 400 พร้อม fields (1 ms)
+    ✓ TEST-F03-03a: min_value=961 → 400 พร้อม fields (1 ms)
+    ✓ TEST-F03-03a: max_value=961 → 400; min=1,max=960 → 201 (2 ms)
+    ✓ TEST-F03-03b: max < min → 400
+    ✓ TEST-F03-03b: ทศนิยม → 400 (1 ms)
+    ✓ TEST-F03-03b: เป็น string → 400 (1 ms)
+    ✓ TEST-F03-03b: ขาด min_value → 400
+    ✓ TEST-F03-03b: ขาด max_value → 400 (1 ms)
+    ✓ TEST-F03-03c: ชื่อไม่ถูกต้อง (0) → 400
+    ✓ TEST-F03-03c: ชื่อไม่ถูกต้อง (1) → 400 (1 ms)
+    ✓ TEST-F03-03c: ชื่อไม่ถูกต้อง (2) → 400 (1 ms)
+    ✓ TEST-F03-03c: ชื่อ 100 ตัวอักษร → 201; unit=hours → 400 (1 ms)
+  TEST-F03-04/05 — รายการแม่แบบ (AC-F03-04, AC-F03-05)
+    ✓ TEST-F03-04: PM เห็นเฉพาะของตน (2 ms)
+    ✓ TEST-F03-05: Participant เห็นเฉพาะที่ไม่ archived (2 ms)
+  TEST-F03-06 — ต้อง login (NFR-01)
+    ✓ TEST-F03-06: post /api/templates ไม่มี cookie → 401 (1 ms)
+    ✓ TEST-F03-06: get /api/templates ไม่มี cookie → 401
+
+PASS tests/create-user.test.js
+  ✓ creates a user who can log in, with a hashed password (46 ms)
+  ✓ is idempotent: an existing user is not overwritten (3 ms)
+  ✓ rejects short password without touching the DB (2 ms)
+  ✓ rejects missing password without touching the DB (1 ms)
+  ✓ rejects bad role without touching the DB
+  ✓ rejects bad email without touching the DB
+  ✓ rejects short username without touching the DB
+
+PASS tests/ready.test.js
+  GET /api/ready — Readiness check for Cloud Run and K8s
+    ✓ returns 200 { status: "ready", db: "connected" } when DB is connected (3 ms)
+
+Test Suites: 3 failed, 7 passed, 10 total
+Tests:       38 failed, 179 passed, 217 total
+Snapshots:   0 total
+Time:        1.854 s, estimated 2 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

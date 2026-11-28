@@ -74,4 +74,30 @@ function validateEntry(body, goal, template, today) {
   return { ok: Object.keys(fields).length === 0, fields };
 }
 
-module.exports = { validateTemplate, validateGoal, validateEntry };
+/**
+ * validateEntryUpdate — ตรวจ body ของ PATCH entry ตาม contract F-11 (S-4, S-5, S-13)
+ * แก้ได้เฉพาะ minutes; field อื่นทุกตัว → "not editable"; รายงานทุก field ที่ผิดพร้อมกัน
+ * @param {object} body     — req.body
+ * @param {object} template — { min_value, max_value }
+ * @returns {{ ok: boolean, fields: object }}
+ */
+function validateEntryUpdate(body, template) {
+  const b = body && typeof body === 'object' ? body : {};
+  const fields = {};
+
+  // --- minutes (S-5, BR-02) ---
+  if (!isInt(b.minutes)) {
+    fields.minutes = 'integer required';
+  } else if (b.minutes < template.min_value || b.minutes > template.max_value) {
+    fields.minutes = 'out of template range';
+  }
+
+  // --- field อื่น (S-4: กัน mass-assignment) ---
+  for (const key of Object.keys(b)) {
+    if (key !== 'minutes') fields[key] = 'not editable';
+  }
+
+  return { ok: Object.keys(fields).length === 0, fields };
+}
+
+module.exports = { validateTemplate, validateGoal, validateEntry, validateEntryUpdate };
