@@ -17,6 +17,12 @@ describe('friendlyFieldError (UI polish)', () => {
     expect(friendlyFieldError('must not be before start_date')).not.toMatch(/start_date/);
   });
 
+  it('แปลข้อความเพดาน target_minutes (bug #42)', () => {
+    const msg = friendlyFieldError('must not exceed 350400');
+    expect(msg).not.toBe('must not exceed 350400');
+    expect(msg).toMatch(/350,?400/);
+  });
+
   it('ข้อความที่ไม่รู้จักแสดงตามเดิม และแปลทั้งชุด field ได้', () => {
     expect(friendlyFieldError('something new')).toBe('something new');
     expect(friendlyFields({ minutes: 'integer required' })).toEqual({

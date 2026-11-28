@@ -67,6 +67,18 @@ describe('TEST-F04-02 — validation (AC-F04-02, BR-04)', () => {
   test('TEST-F04-02a: target_minutes=1 → 201', async () => {
     expect((await create(aCookie, goalBody(t1, { target_minutes: 1 }))).status).toBe(201);
   });
+  // Bug #42: เดิมค่าเกินช่วง INTEGER ของ Postgres ทำให้ได้ 500
+  test.each([[350401], [2147483648], [3000000000]])('TEST-F04-02c: target_minutes=%p → 400 must not exceed 350400', async (v) => {
+    const res = await create(aCookie, goalBody(t1, { target_minutes: v }));
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: 'Bad Request', fields: { target_minutes: 'must not exceed 350400' } });
+    expect(await countGoals(aId, t1)).toBe(0);
+  });
+  test('TEST-F04-02c: target_minutes=350400 (เพดานพอดี) → 201', async () => {
+    const res = await create(aCookie, goalBody(t1, { target_minutes: 350400 }));
+    expect(res.status).toBe(201);
+    expect(res.body.goal.target_minutes).toBe(350400);
+  });
   test.each([['2026-02-30'], ['x'], [undefined]])('TEST-F04-02b: end_date=%p → 400', async (v) => {
     const res = await create(aCookie, goalBody(t1, { end_date: v }));
     expect(res.status).toBe(400);
