@@ -5,6 +5,7 @@ import {
   getGoalProgress,
   getGoalEntries,
   createGoalEntry,
+  updateGoal,
   updateGoalEntry,
   deleteGoalEntry,
 } from '../api/goals';
@@ -48,6 +49,15 @@ export function GoalDetailPage() {
   const [entryNotice, setEntryNotice] = useState('');
   const [rowBusy, setRowBusy] = useState(false);
 
+  // Edit Goal State (F-10)
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalTarget, setGoalTarget] = useState('');
+  const [goalEnd, setGoalEnd] = useState('');
+  const [goalFieldErrors, setGoalFieldErrors] = useState({});
+  const [goalFormError, setGoalFormError] = useState('');
+  const [goalNotice, setGoalNotice] = useState('');
+  const [goalSaving, setGoalSaving] = useState(false);
+
   // Default entry date to today
   useEffect(() => {
     setEntryDate(todayBangkok());
@@ -90,6 +100,58 @@ export function GoalDetailPage() {
     ]);
     setProgress(progRes.progress);
     setEntries(entriesRes.entries || []);
+  };
+
+  // F-10: โหลด goal และ progress ใหม่ (ไม่ใช้ loadGoalData เพราะจะกระพริบเป็นหน้า loading)
+  const refreshGoalAndProgress = async () => {
+    const [goalRes, progRes] = await Promise.all([getGoal(id), getGoalProgress(id)]);
+    setGoal(goalRes.goal);
+    setProgress(progRes.progress);
+  };
+
+  const startGoalEdit = () => {
+    setGoalNotice('');
+    setGoalFormError('');
+    setGoalFieldErrors({});
+    setGoalTarget(String(goal.target_minutes));
+    setGoalEnd(goal.end_date);
+    setEditingGoal(true);
+  };
+
+  const cancelGoalEdit = () => {
+    setEditingGoal(false);
+    setGoalFormError('');
+    setGoalFieldErrors({});
+  };
+
+  const handleGoalSave = async (e) => {
+    e.preventDefault();
+    setGoalFormError('');
+    setGoalFieldErrors({});
+    setGoalNotice('');
+    setGoalSaving(true);
+    try {
+      await updateGoal(id, { target_minutes: Number(goalTarget), end_date: goalEnd });
+      setEditingGoal(false);
+      await refreshGoalAndProgress();
+    } catch (err) {
+      if (err.status === 409) {
+        // goal จบไปแล้ว: ปิดฟอร์ม แจ้งผู้ใช้ และโหลดสถานะล่าสุด (ปุ่มแก้จะหายไป)
+        setEditingGoal(false);
+        setGoalNotice('This goal has ended and can no longer be edited.');
+        try {
+          await refreshGoalAndProgress();
+        } catch {
+          /* ถ้ารีเฟรชไม่ได้ ผู้ใช้ยังเห็นข้อความแจ้งอยู่ */
+        }
+      } else if (err.data?.fields) {
+        setGoalFieldErrors(friendlyFields(err.data.fields, template));
+      } else {
+        setGoalFormError(err.message || 'Failed to update goal');
+      }
+    } finally {
+      setGoalSaving(false);
+    }
   };
 
   // S-14: ปุ่มแก้/ลบแสดงเฉพาะ entry_date >= วันนี้ − 7 และ goal active
@@ -228,6 +290,58 @@ export function GoalDetailPage() {
           Period: {goal.start_date} to {goal.end_date} | Target: {goal.target_minutes} mins
         </p>
       </header>
+
+      {/* Edit Goal (F-10, S-15: ปุ่มเฉพาะ goal ที่ active — backend ตรวจ S-1 เองเสมอ) */}
+      {goalNotice && (
+        <p className="field-error" role="alert">
+          {goalNotice}
+        </p>
+      )}
+      {!isEnded && !editingGoal && (
+        <button type="button" className="btn-secondary" onClick={startGoalEdit}>
+          Edit goal
+        </button>
+      )}
+      {editingGoal && (
+        <form onSubmit={handleGoalSave} className="dashboard-card form-card" data-testid="goal-edit-form">
+          <h3>Edit Goal</h3>
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="goal-target">Target minutes</label>
+              <input
+                id="goal-target"
+                type="number"
+                value={goalTarget}
+                onChange={(e) => setGoalTarget(e.target.value)}
+              />
+              {goalFieldErrors.target_minutes && (
+                <span className="field-error">{goalFieldErrors.target_minutes}</span>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="goal-end">End date</label>
+              <input
+                id="goal-end"
+                type="date"
+                value={goalEnd}
+                onChange={(e) => setGoalEnd(e.target.value)}
+              />
+              {goalFieldErrors.end_date && <span className="field-error">{goalFieldErrors.end_date}</span>}
+            </div>
+          </div>
+          {(goalFieldErrors.body || goalFormError) && (
+            <p className="field-error">{goalFieldErrors.body || goalFormError}</p>
+          )}
+          <div className="entry-actions">
+            <button type="submit" disabled={goalSaving}>
+              Save
+            </button>
+            <button type="button" className="btn-secondary" onClick={cancelGoalEdit} disabled={goalSaving}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* Progress Summary Card (F-06, BR-06) */}
       <div className="dashboard-card progress-card" data-testid="progress-summary">
