@@ -9,6 +9,7 @@ const FRIENDLY = {
   'must be >= min_value': 'Max minutes must be at least the min minutes.',
   'must be minutes': 'The unit must be minutes.',
   'positive integer': 'Enter a whole number greater than 0.',
+  'must not exceed 350400': 'The target cannot exceed 350,400 minutes (960 minutes a day for 365 days).',
   'date YYYY-MM-DD': 'Choose a valid date.',
   'must not be in the past': 'The start date cannot be in the past.',
   'must not be before start_date': 'The end date cannot be before the start date.',

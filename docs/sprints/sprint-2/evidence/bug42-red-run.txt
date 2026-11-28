@@ -1,0 +1,36 @@
+# RED run — bug #42 (F-04 target_minutes cap), tests written before the fix
+base: 76e53c9 (sprint-2-staging @ PR #46 merge)
+date: 2026-11-28T13:20:17Z
+command: cd backend && npm test
+
+    ✕ TEST-F04-02c: target_minutes=350401 → 400 must not exceed 350400 (7 ms)
+    ✕ TEST-F04-02c: target_minutes=2147483648 → 400 must not exceed 350400 (20 ms)
+    ✕ TEST-F04-02c: target_minutes=3000000000 → 400 must not exceed 350400 (8 ms)
+    ✓ TEST-F04-02c: target_minutes=350400 (เพดานพอดี) → 201 (3 ms)
+    Expected: 400
+    Received: 201
+    Expected: 400
+    Received: 500
+    Expected: 400
+    Received: 500
+    ✓ target_minutes = 350400 (เพดาน) ผ่าน
+    ✕ target_minutes=350401 → must not exceed 350400
+    ✕ target_minutes=2147483648 → must not exceed 350400
+    ✕ target_minutes=3000000000 → must not exceed 350400
+    Expected: "must not exceed 350400"
+    Received: undefined
+    Expected: "must not exceed 350400"
+    Received: undefined
+    Expected: "must not exceed 350400"
+    Received: undefined
+    ✓ TEST-F07-02b: duplicate (goal_id, entry_date) is rejected by DB constraint with code 23505 (4 ms)
+    ✓ TEST-F07-05b: second active goal on the same template is rejected with code 23505 (2 ms)
+Test Suites: 2 failed, 8 passed, 10 total
+Tests:       6 failed, 219 passed, 225 total
+
+--- frontend (cd frontend && npx vitest run) ---
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/tests/messages.test.js > friendlyFieldError (UI polish) > แปลข้อความเพดาน target_minutes (bug #42)
+AssertionError: expected 'must not exceed 350400' not to be 'must not exceed 350400' // Object.is equality
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 26 passed (27)

@@ -34,13 +34,14 @@ name: CI & Docker Build
 # ------------------------------------------------------------------------------
 # Triggers
 #   workflow_call     : lets deploy.yml reuse this workflow (do not remove).
-#   pull_request/main : checks every PR before merge.
+#   pull_request/main : checks every PR before merge, into main and into any
+#                       sprint staging branch (sprint-1-staging, sprint-2-staging, ...).
 #   workflow_dispatch : manual "Run workflow" button.
 # ------------------------------------------------------------------------------
 on:
   workflow_call:
   pull_request:
-    branches: [main, sprint-1-staging]
+    branches: [main, 'sprint-*-staging']
   workflow_dispatch:
 
 # Least privilege: this workflow only needs to read the repository.

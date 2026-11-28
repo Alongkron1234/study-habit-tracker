@@ -4,6 +4,9 @@
  */
 const { isValidDate, daysInclusive } = require('./dates');
 
+// เพดานของ target_minutes = 960 นาที/วัน × 365 วัน (ยอดสูงสุดที่ goal หนึ่งทำได้จริง) ใช้ร่วมกับ F-10
+const MAX_TARGET_MINUTES = 350400;
+
 const isInt = (v) => typeof v === 'number' && Number.isInteger(v);
 const inRange = (v) => isInt(v) && v >= 1 && v <= 960;
 
@@ -26,6 +29,7 @@ function validateGoal(body, today) {
   const fields = {};
 
   if (!isInt(b.target_minutes) || b.target_minutes <= 0) fields.target_minutes = 'positive integer';
+  else if (b.target_minutes > MAX_TARGET_MINUTES) fields.target_minutes = `must not exceed ${MAX_TARGET_MINUTES}`;
 
   const startOk = isValidDate(b.start_date);
   const endOk = isValidDate(b.end_date);
@@ -74,4 +78,30 @@ function validateEntry(body, goal, template, today) {
   return { ok: Object.keys(fields).length === 0, fields };
 }
 
-module.exports = { validateTemplate, validateGoal, validateEntry };
+/**
+ * validateEntryUpdate — ตรวจ body ของ PATCH entry ตาม contract F-11 (S-4, S-5, S-13)
+ * แก้ได้เฉพาะ minutes; field อื่นทุกตัว → "not editable"; รายงานทุก field ที่ผิดพร้อมกัน
+ * @param {object} body     — req.body
+ * @param {object} template — { min_value, max_value }
+ * @returns {{ ok: boolean, fields: object }}
+ */
+function validateEntryUpdate(body, template) {
+  const b = body && typeof body === 'object' ? body : {};
+  const fields = {};
+
+  // --- minutes (S-5, BR-02) ---
+  if (!isInt(b.minutes)) {
+    fields.minutes = 'integer required';
+  } else if (b.minutes < template.min_value || b.minutes > template.max_value) {
+    fields.minutes = 'out of template range';
+  }
+
+  // --- field อื่น (S-4: กัน mass-assignment) ---
+  for (const key of Object.keys(b)) {
+    if (key !== 'minutes') fields[key] = 'not editable';
+  }
+
+  return { ok: Object.keys(fields).length === 0, fields };
+}
+
+module.exports = { validateTemplate, validateGoal, validateEntry, validateEntryUpdate, MAX_TARGET_MINUTES };

@@ -1,0 +1,11 @@
+# GREEN run — bug #42 (F-04 target_minutes cap)
+base (RED commit): 6f2d90a + fix in working tree
+date: 2026-11-28T13:20:46Z
+
+--- backend: cd backend && npm test ---
+Test Suites: 10 passed, 10 total
+Tests:       225 passed, 225 total
+
+--- frontend: cd frontend && npx vitest run ---
+ Test Files  5 passed (5)
+      Tests  27 passed (27)

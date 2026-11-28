@@ -1,9 +1,10 @@
 /**
  * validate.test.js — unit test ของ validate.js และ dates.js
  * Contract: docs/sprints/sprint-1/F-03-F-04-templates-goals.md  TEST-F03-U1
- * Requirements: BR-02, BR-04, BR-09
+ * Contract: docs/sprints/sprint-2/F-11-edit-delete-entry.md  TEST-F11-09
+ * Requirements: BR-02, BR-04, BR-09, BR-01, BR-08, NFR-06
  */
-const { validateTemplate, validateGoal } = require('../src/lib/validate');
+const { validateTemplate, validateGoal, validateEntryUpdate } = require('../src/lib/validate');
 const { todayBangkok, isValidDate, daysInclusive } = require('../src/lib/dates');
 
 const T = '2026-11-10';
@@ -43,6 +44,13 @@ describe('TEST-F03-U1 — validateGoal (S-5)', () => {
   test('target_minutes = 1 ผ่าน', () => {
     expect(validateGoal({ ...okGoal, target_minutes: 1 }, T).ok).toBe(true);
   });
+  // Bug #42: เพดานบน 350400 = 960 นาที/วัน × 365 วัน
+  test('target_minutes = 350400 (เพดาน) ผ่าน', () => {
+    expect(validateGoal({ ...okGoal, target_minutes: 350400 }, T).ok).toBe(true);
+  });
+  test.each([[350401], [2147483648], [3000000000]])('target_minutes=%p → must not exceed 350400', (v) => {
+    expect(validateGoal({ ...okGoal, target_minutes: v }, T).fields.target_minutes).toBe('must not exceed 350400');
+  });
   test.each([['2026-02-30'], ['x'], ['2026-1-5'], [undefined], [20261120]])('end_date=%p → ไม่ผ่าน', (v) => {
     expect(validateGoal({ ...okGoal, end_date: v }, T).fields).toHaveProperty('end_date');
   });
@@ -75,5 +83,45 @@ describe('TEST-F03-U1 — dates (S-11)', () => {
   test('todayBangkok: 17:00Z ของวันก่อนหน้าคือเที่ยงคืน Bangkok (วันถัดไป)', () => {
     expect(todayBangkok(new Date('2026-11-09T16:59:59Z'))).toBe('2026-11-09');
     expect(todayBangkok(new Date('2026-11-09T17:00:00Z'))).toBe('2026-11-10');
+  });
+});
+
+// ── F-11: validateEntryUpdate (TEST-F11-09, S-4, S-5, S-13) ─────────────────
+describe('TEST-F11-09 — validateEntryUpdate (S-4, S-5, S-13)', () => {
+  const tpl = { min_value: 10, max_value: 120 };
+
+  test.each([[10], [11], [60], [119], [120]])('minutes=%p (ในช่วง/ขอบ) → ok', (v) => {
+    const r = validateEntryUpdate({ minutes: v }, tpl);
+    expect(r.ok).toBe(true);
+    expect(r.fields).toEqual({});
+  });
+
+  test.each([[-1], [0], [1], [9], [121]])('minutes=%p (จำนวนเต็มนอกช่วง) → "out of template range"', (v) => {
+    const r = validateEntryUpdate({ minutes: v }, tpl);
+    expect(r.ok).toBe(false);
+    expect(r.fields).toEqual({ minutes: 'out of template range' });
+  });
+
+  test.each([[1.5], ['60'], [null], [undefined], [true], [NaN]])('minutes=%p (ไม่ใช่จำนวนเต็ม) → "integer required"', (v) => {
+    const r = validateEntryUpdate({ minutes: v }, tpl);
+    expect(r.ok).toBe(false);
+    expect(r.fields).toEqual({ minutes: 'integer required' });
+  });
+
+  test('ไม่มี field minutes (body ว่าง / ไม่มี body) → "integer required"', () => {
+    expect(validateEntryUpdate({}, tpl).fields).toEqual({ minutes: 'integer required' });
+    expect(validateEntryUpdate(undefined, tpl).fields).toEqual({ minutes: 'integer required' });
+  });
+
+  test('field เกิน (entry_date, goal_id) → "not editable" แม้ minutes ถูกต้อง', () => {
+    const r = validateEntryUpdate({ minutes: 30, entry_date: '2026-11-10', goal_id: 5 }, tpl);
+    expect(r.ok).toBe(false);
+    expect(r.fields).toEqual({ entry_date: 'not editable', goal_id: 'not editable' });
+  });
+
+  test('S-13: minutes ผิดและมี field เกิน → รายงานทุก field พร้อมกัน', () => {
+    const r = validateEntryUpdate({ minutes: 1.5, entry_date: '2026-11-10' }, tpl);
+    expect(r.ok).toBe(false);
+    expect(r.fields).toEqual({ minutes: 'integer required', entry_date: 'not editable' });
   });
 });
