@@ -24,6 +24,45 @@ function validateTemplate(body) {
   return { ok: Object.keys(fields).length === 0, fields };
 }
 
+/**
+ * validateTemplateUpdate — ตรวจ body ของ PATCH /api/templates/:id ตาม contract F-09 (S-3, S-4, S-5, S-10)
+ * @param {object} body — req.body
+ * @param {{min_value: number, max_value: number}} current — ช่วงค่าปัจจุบันของแม่แบบ (ใช้ตรวจข้ามกัน)
+ * @returns {{ ok: boolean, fields: object }} รายงานทุก field ที่ผิดพร้อมกัน
+ */
+function validateTemplateUpdate(body, current) {
+  const b = body !== null && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
+  const fields = {};
+
+  // S-3: แก้ได้เฉพาะ name, min_value, max_value (unit ยอมรับเฉพาะ "minutes")
+  Object.keys(b).forEach((k) => {
+    if (!['name', 'min_value', 'max_value', 'unit'].includes(k)) fields[k] = 'not editable';
+  });
+  if (has('unit') && b.unit !== 'minutes') fields.unit = 'must be minutes'; // BR-09
+  // S-5: ต้องมีอย่างน้อยหนึ่งใน name/min_value/max_value
+  if (!has('name') && !has('min_value') && !has('max_value')) fields.body = 'name, min_value or max_value required';
+
+  if (has('name')) {
+    const name = typeof b.name === 'string' ? b.name.trim() : '';
+    if (name.length < 1 || name.length > 100) fields.name = 'required, 1-100 characters';
+  }
+  if (has('min_value') && !inRange(b.min_value)) fields.min_value = 'integer 1-960';
+  if (has('max_value') && !inRange(b.max_value)) fields.max_value = 'integer 1-960';
+
+  // S-4: ตรวจข้ามกันหลังรวมกับค่าปัจจุบัน แยกข้อความตามฝั่งที่ client ส่งมา
+  const minOk = has('min_value') && inRange(b.min_value);
+  const maxOk = has('max_value') && inRange(b.max_value);
+  if (maxOk) {
+    const effMin = has('min_value') ? (minOk ? b.min_value : null) : current.min_value;
+    if (effMin !== null && b.max_value < effMin) fields.max_value = 'must be >= min_value';
+  } else if (minOk && !has('max_value') && b.min_value > current.max_value) {
+    fields.min_value = 'must be <= max_value';
+  }
+
+  return { ok: Object.keys(fields).length === 0, fields };
+}
+
 // ตรวจ target_minutes (ใช้ร่วมกันระหว่าง F-04 สร้าง goal และ F-10 แก้ goal) คืนข้อความ error หรือ null
 function targetMinutesError(v) {
   if (!isInt(v) || v <= 0) return 'positive integer';
@@ -146,4 +185,4 @@ function validateEntryUpdate(body, template) {
   return { ok: Object.keys(fields).length === 0, fields };
 }
 
-module.exports = { validateTemplate, validateGoal, validateGoalUpdate, validateEntry, validateEntryUpdate, MAX_TARGET_MINUTES };
+module.exports = { validateTemplate, validateTemplateUpdate, validateGoal, validateGoalUpdate, validateEntry, validateEntryUpdate, MAX_TARGET_MINUTES };
