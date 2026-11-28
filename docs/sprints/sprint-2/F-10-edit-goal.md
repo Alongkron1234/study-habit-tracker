@@ -1,6 +1,6 @@
 # Contract: F-10 แก้ไขเป้าหมาย
 
-**Sprint:** 2 | **Issue:** #<เลข issue> | **Branch:** `feature/f10-edit-goal`
+**Sprint:** 2 | **Issue:** #43 | **Branch:** `feature/f10-edit-goal`
 **อ้างอิง SRS:** FR-12, BR-03, BR-04, BR-05, BR-06, BR-08, NFR-01, NFR-06
 **เวอร์ชัน:** 1.1 | **วันที่แก้ล่าสุด:** 2026-11-28
 **ผู้ทำ:** Alongkron1234 | **ผู้ review:** atiwit
