@@ -148,7 +148,7 @@ F-05 (`routes/entries.js`, ตรรกะตรวจ minutes ใน `validateE
 ## 5. Definition of Done และหลักฐาน
 
 - [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — v1.2 `00ed536` (v1.0 และ v1.1 เป็นร่างที่ยังไม่ถูก commit)
-- [ ] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F11-10) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — `<sha>`, ผลรัน `evidence/F-11-red-run.txt`
+- [ ] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F11-10) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — `d9f7871`, ผลรัน `evidence/F-11-red-run.txt` (38 failed / 179 passed; 179 เดิมผ่านครบ)
 - [ ] โค้ดครบตาม §2 (API, Logic, UI) และ `npm test` ผ่านทุกเทสต์ — `<sha>`, ผลรัน `evidence/F-11-green-run.txt` (ระบุจำนวน passed/failed/skipped)
 - [ ] TEST-F11-10 รันบน candidate แล้ว พร้อม screenshot ที่ระบุ version — `evidence/F-11-ui-*.png`
 - [ ] **ทั้ง test suite** ยังผ่าน (regression ของ F-01 ถึง F-07 และ feature อื่นใน Sprint 2 โดยเฉพาะ BR-01, BR-02, BR-03, BR-08) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
