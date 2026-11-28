@@ -2,7 +2,7 @@
 
 **Sprint:** 2 | **Issue:** #<เลข issue> | **Branch:** `feature/f09-edit-archive-template`
 **อ้างอิง SRS:** FR-11, BR-02, BR-07, BR-08, BR-09, NFR-01, NFR-06
-**เวอร์ชัน:** 1.0 (ร่าง) | **วันที่แก้ล่าสุด:** 2026-11-28
+**เวอร์ชัน:** 1.1 (ร่าง) | **วันที่แก้ล่าสุด:** 2026-11-28
 **ผู้ทำ:** Alongkron1234 | **ผู้ review:** atiwit
 
 ---
@@ -86,7 +86,8 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 | ตำแหน่ง | รายการแม่แบบในหน้า `/templates` (เฉพาะ PM) หน้านี้มีป้าย Active/Archived ต่อแม่แบบอยู่แล้ว |
 | ภาษา | ข้อความบนหน้าจอใช้ภาษาเดียวกับหน้าปัจจุบัน (อังกฤษ) ข้อความภาษาไทยในตารางนี้เป็นความหมายที่ต้องการ |
 | แม่แบบที่ยังไม่ archived | ปุ่ม "แก้ไข" และ "เก็บถาวร" |
-| แก้ไข | ชื่อ, ค่าต่ำสุด, ค่าสูงสุดเป็น input เริ่มด้วยค่าปัจจุบัน; ปุ่ม "บันทึก"/"ยกเลิก"; สำเร็จแล้วแสดงค่าใหม่; 400 แสดงข้อความจาก `fields.<ชื่อ>` ใต้ช่องนั้น; 409 แสดง "แม่แบบนี้เก็บถาวรแล้ว แก้ไขไม่ได้" แล้วรีเฟรชรายการ |
+| แก้ไข | ชื่อ, ค่าต่ำสุด, ค่าสูงสุดเป็น input เริ่มด้วยค่าปัจจุบัน; ปุ่ม "บันทึก"/"ยกเลิก"; สำเร็จแล้วแสดงค่าใหม่; 400 แสดงข้อความของ `fields.<ชื่อ>` ใต้ช่องนั้น **ผ่าน `friendlyFields()` ใน `frontend/src/lib/messages.js`** แบบเดียวกับฟอร์มสร้างแม่แบบ (ไม่แสดงข้อความดิบของ API); 409 แสดง "แม่แบบนี้เก็บถาวรแล้ว แก้ไขไม่ได้" แล้วรีเฟรชรายการ |
+| ข้อความที่ผู้ใช้เห็น | มีอยู่แล้วใน `messages.js`: `required, 1-100 characters`, `integer 1-960`, `must be >= min_value`, `must be minutes`; **เพิ่ม** `must be <= max_value` → "Min minutes must be at most the max minutes." (UI ส่งเฉพาะ name/min/max จึงไม่ต้องแปล `not editable` และ `body`) |
 | เก็บถาวร | กล่องยืนยัน "เก็บถาวรแม่แบบ <ชื่อ>? ผู้ใช้จะเริ่มเป้าหมายใหม่ด้วยแม่แบบนี้ไม่ได้"; สำเร็จแล้วแถวแสดงป้าย "เก็บถาวรแล้ว" และไม่มีปุ่ม |
 
 ### ผลต่อโครงสร้างโค้ด
@@ -96,7 +97,7 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 | ฐานข้อมูล | **ไม่เปลี่ยน schema** | ใช้ `activity_templates` เดิม (มี `is_archived`, `updated_at`) |
 | API | เปลี่ยน | เพิ่ม 2 route ใน `routes/templates.js` และ loader ตรวจ `created_by` สำหรับ `ownedBy` |
 | Logic | เปลี่ยน | เพิ่ม `validateTemplateUpdate(body, current)` ใน `src/lib/validate.js` (ฟังก์ชันบริสุทธิ์) ใช้ร่วมกฎของ `validateTemplate` |
-| UI | เปลี่ยน | เพิ่มปุ่มแก้ไข/เก็บถาวรและป้ายในหน้า `TemplatesPage` |
+| UI | เปลี่ยน | เพิ่มปุ่มแก้ไข/เก็บถาวรและป้ายในหน้า `TemplatesPage`; เพิ่มข้อความใหม่ใน `frontend/src/lib/messages.js` |
 
 ---
 
@@ -111,7 +112,7 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 | **AC-F09-05** | หลัง archive: Participant ไม่เห็นแม่แบบใน `GET /api/templates` แต่ PM เห็นพร้อม `is_archived: true`; `POST /api/goals` ด้วยแม่แบบนั้น → 404; เป้าหมาย active ที่ใช้แม่แบบนั้นอยู่แล้วยังบันทึก entry ได้ (201) และ `GET .../progress` ถูกต้อง | FR-11, BR-05 |
 | **AC-F09-06** | หลังแก้ช่วงค่า: entry ที่มีอยู่แล้วคงอยู่ ค่าไม่เปลี่ยน และยังนับใน progress; entry ที่บันทึกใหม่ (POST) ถูกตรวจกับช่วงใหม่ — ค่าที่อยู่นอกช่วงใหม่ → 400 "out of template range", ค่าในช่วงใหม่ → 201 | FR-11, BR-02 |
 | **AC-F09-07** | Participant เรียกทั้งสอง endpoint → 403; PM คนอื่นเรียกกับแม่แบบที่ไม่ใช่ของตน → 404 และแม่แบบไม่เปลี่ยน; id ผิดรูปแบบ/ไม่มีอยู่ → 404; ไม่ login → 401 | BR-07, NFR-01 |
-| **AC-F09-08** | ใน UI PM แก้ชื่อ/ช่วงค่า และเก็บถาวรแม่แบบได้ ค่าบนหน้าจอและหลัง reload ตรงกัน; ค่าผิดแสดง error ใต้ช่อง; แม่แบบ archived แสดงป้ายและไม่มีปุ่ม; หน้ารายละเอียด goal ของ Participant ที่ใช้แม่แบบ archived โหลดและบันทึก entry ได้ | FR-11 |
+| **AC-F09-08** | ใน UI PM แก้ชื่อ/ช่วงค่า และเก็บถาวรแม่แบบได้ ค่าบนหน้าจอและหลัง reload ตรงกัน; ค่าผิดแสดงข้อความที่แปลแล้ว (ตาม §2 UI) ใต้ช่อง; แม่แบบ archived แสดงป้ายและไม่มีปุ่ม; หน้ารายละเอียด goal ของ Participant ที่ใช้แม่แบบ archived โหลดและบันทึก entry ได้ | FR-11 |
 
 ---
 
@@ -146,14 +147,15 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 | **TEST-F09-08c** | AC-F09-07 | API integration | PM A login (positive control ว่า route มี) | `PATCH /api/templates/<id>` และ `POST .../archive` ด้วย id = "abc", 0, -1, 999999 | 404 ทุกกรณี |
 | **TEST-F09-08d** | AC-F09-07 | API integration | ไม่ login | `PATCH /api/templates/1` และ `POST /api/templates/1/archive` | 401 (เพิ่ม `['patch','/api/templates/1']` และ `['post','/api/templates/1/archive']` ใน `PROTECTED_ENDPOINTS` ของ `rbac.test.js`) |
 | **TEST-F09-09** | AC-F09-02, AC-F09-03 | Unit | – | `validateTemplateUpdate(body, {name, min_value: 10, max_value: 120})` กับ name ว่าง/ยาว/ไม่ใช่ string; min/max = 0, 1, 960, 961, 1.5, "10", null; `{max_value: 5}`, `{min_value: 200}`, `{min_value: 80, max_value: 70}`, `{min_value: 50, max_value: 50}`; `unit` = "minutes"/"hours"; field เกิน; body ว่าง/มีแต่ `unit`; ผิดหลาย field | ข้อความและ field ตรงตาม S-3, S-4, S-5, S-10 |
-| **TEST-F09-10** | AC-F09-08 | UI (manual demo พร้อม screenshot; ใช้ E2E ถ้าโปรเจกต์มี) | PM มีแม่แบบ 1 อัน, Participant มี goal active ที่ใช้แม่แบบนั้น | PM แก้ชื่อและช่วงค่า → reload; ใส่ต่ำสุดมากกว่าสูงสุด → บันทึก; เก็บถาวร; จากนั้นเข้าเป็น Participant เปิดหน้ารายละเอียด goal นั้นและบันทึก entry | ค่าใหม่คงอยู่หลัง reload; ต่ำสุดมากกว่าสูงสุดแสดง "must be <= max_value" ใต้ช่อง; แม่แบบ archived แสดงป้ายและไม่มีปุ่ม; หน้า goal โหลดและบันทึก entry ได้ |
+| **TEST-F09-11** | AC-F09-08 | Frontend unit (vitest) | – | `friendlyFields({min_value: "must be <= max_value"})` และ `friendlyFields({max_value: "must be >= min_value"})` | "Min minutes must be at most the max minutes."; "Max minutes must be at least the min minutes." |
+| **TEST-F09-10** | AC-F09-08 | UI (manual demo พร้อม screenshot; ใช้ E2E ถ้าโปรเจกต์มี) | PM มีแม่แบบ 1 อัน, Participant มี goal active ที่ใช้แม่แบบนั้น | PM แก้ชื่อและช่วงค่า → reload; ใส่ต่ำสุดมากกว่าสูงสุด → บันทึก; เก็บถาวร; จากนั้นเข้าเป็น Participant เปิดหน้ารายละเอียด goal นั้นและบันทึก entry | ค่าใหม่คงอยู่หลัง reload; ต่ำสุดมากกว่าสูงสุดแสดง "Max minutes must be at least the min minutes." ใต้ช่องสูงสุด (ฟอร์มส่งทั้ง min และ max จึงได้ `fields.max_value` ตาม S-4); แม่แบบ archived แสดงป้ายและไม่มีปุ่ม; หน้า goal โหลดและบันทึก entry ได้ |
 
 ---
 
 ## 5. Definition of Done และหลักฐาน
 
 - [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — `<sha>`
-- [ ] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F09-10) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — `<sha>`, ผลรัน `evidence/F-09-red-run.txt`
+- [ ] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F09-10 แต่รวม TEST-F09-11) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — `<sha>`, ผลรัน `evidence/F-09-red-run.txt`
 - [ ] โค้ดครบตาม §2 (API, Logic, UI) และ `npm test` ผ่านทุกเทสต์ — `<sha>`, ผลรัน `evidence/F-09-green-run.txt` (ระบุจำนวน passed/failed/skipped)
 - [ ] TEST-F09-10 รันบน candidate แล้ว พร้อม screenshot ที่ระบุ version — `evidence/F-09-ui-*.png`
 - [ ] **ทั้ง test suite** ยังผ่าน (regression ของ F-01 ถึง F-07 และ feature อื่นใน Sprint 2 โดยเฉพาะ BR-02, BR-05, BR-07, BR-08) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
@@ -169,3 +171,4 @@ un-archive, ลบแม่แบบ, เปลี่ยนหน่วย (BR-0
 | วันที่ | เวอร์ชัน | การเปลี่ยนแปลง | เหตุผล |
 |---|---|---|---|
 | 2026-11-28 | 1.0 | สร้างร่าง | ก่อนเริ่ม implement |
+| 2026-11-28 | 1.1 | §2 UI แสดง error ผ่าน `friendlyFields()` และเพิ่มข้อความ `must be <= max_value` ใน `messages.js`; TEST-F09-10 คาดข้อความที่แปลแล้ว; เพิ่ม TEST-F09-11 | review: UI จริงแปลข้อความ API ผ่าน `messages.js` ก่อนแสดง |
