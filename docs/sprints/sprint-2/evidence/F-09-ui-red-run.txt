@@ -1,0 +1,18 @@
+# RED run — F-09 UI (tests written before implementation)
+base: cfa2c8a (backend GREEN); UI test files uncommitted at run time, committed next
+date: 2026-11-28T14:38:43Z
+command: cd frontend && npx vitest run
+
+     × TEST-F09-11: ข้อความตรวจข้ามกันของ min/max ของแม่แบบ
+     × shows Edit and Archive only on templates that are not archived
+     × opens the edit form with the current name and range
+     × saves: PATCH with the new values, closes the form, shows the new values from the reload
+     × Cancel closes the form without calling the API
+     × 400 on max_value: shows the translated message under the max field and stays open
+     × 400 on min_value cross-check: translated message "at most the max minutes"
+     × 409: tells the user the template is archived, closes the form and reloads the list
+     × archives after confirmation: the card shows Archived and loses its buttons
+     × does not archive when the confirmation is dismissed
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  2 failed | 5 passed (7)
+      Tests  10 failed | 36 passed (46)
