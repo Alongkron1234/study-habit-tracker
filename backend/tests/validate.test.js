@@ -44,6 +44,13 @@ describe('TEST-F03-U1 — validateGoal (S-5)', () => {
   test('target_minutes = 1 ผ่าน', () => {
     expect(validateGoal({ ...okGoal, target_minutes: 1 }, T).ok).toBe(true);
   });
+  // Bug #42: เพดานบน 350400 = 960 นาที/วัน × 365 วัน
+  test('target_minutes = 350400 (เพดาน) ผ่าน', () => {
+    expect(validateGoal({ ...okGoal, target_minutes: 350400 }, T).ok).toBe(true);
+  });
+  test.each([[350401], [2147483648], [3000000000]])('target_minutes=%p → must not exceed 350400', (v) => {
+    expect(validateGoal({ ...okGoal, target_minutes: v }, T).fields.target_minutes).toBe('must not exceed 350400');
+  });
   test.each([['2026-02-30'], ['x'], ['2026-1-5'], [undefined], [20261120]])('end_date=%p → ไม่ผ่าน', (v) => {
     expect(validateGoal({ ...okGoal, end_date: v }, T).fields).toHaveProperty('end_date');
   });

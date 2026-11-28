@@ -4,6 +4,9 @@
  */
 const { isValidDate, daysInclusive } = require('./dates');
 
+// เพดานของ target_minutes = 960 นาที/วัน × 365 วัน (ยอดสูงสุดที่ goal หนึ่งทำได้จริง) ใช้ร่วมกับ F-10
+const MAX_TARGET_MINUTES = 350400;
+
 const isInt = (v) => typeof v === 'number' && Number.isInteger(v);
 const inRange = (v) => isInt(v) && v >= 1 && v <= 960;
 
@@ -26,6 +29,7 @@ function validateGoal(body, today) {
   const fields = {};
 
   if (!isInt(b.target_minutes) || b.target_minutes <= 0) fields.target_minutes = 'positive integer';
+  else if (b.target_minutes > MAX_TARGET_MINUTES) fields.target_minutes = `must not exceed ${MAX_TARGET_MINUTES}`;
 
   const startOk = isValidDate(b.start_date);
   const endOk = isValidDate(b.end_date);
@@ -100,4 +104,4 @@ function validateEntryUpdate(body, template) {
   return { ok: Object.keys(fields).length === 0, fields };
 }
 
-module.exports = { validateTemplate, validateGoal, validateEntry, validateEntryUpdate };
+module.exports = { validateTemplate, validateGoal, validateEntry, validateEntryUpdate, MAX_TARGET_MINUTES };
