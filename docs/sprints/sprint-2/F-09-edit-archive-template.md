@@ -1,6 +1,6 @@
 # Contract: F-09 แก้ไข/เก็บถาวร (archive) แม่แบบ
 
-**Sprint:** 2 | **Issue:** #<เลข issue> | **Branch:** `feature/f09-edit-archive-template`
+**Sprint:** 2 | **Issue:** #44 | **Branch:** `feature/f09-edit-archive-template`
 **อ้างอิง SRS:** FR-11, BR-02, BR-07, BR-08, BR-09, NFR-01, NFR-06
 **เวอร์ชัน:** 1.1 | **วันที่แก้ล่าสุด:** 2026-11-28
 **ผู้ทำ:** Alongkron1234 | **ผู้ review:** atiwit
