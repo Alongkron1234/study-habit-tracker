@@ -21,7 +21,7 @@
 | FR-10 ดูประวัติ | F-06 | 1 | API integration | 1 | ผ่าน — AC-F06-02 · TEST-F06-02 (@5370950) |
 | FR-11 แก้ไข/archive แม่แบบ | F-09 | 2 | กำหนดก่อน implement | 2 | วางแผน |
 | FR-12 แก้ไขเป้าหมาย | F-10 | 2 | กำหนดก่อน implement | 2 | วางแผน |
-| FR-13 แก้ไข/ลบ entry | F-11 | 2 | กำหนดก่อน implement | 2 | วางแผน |
+| FR-13 แก้ไข/ลบ entry | F-11 | 2 | API integration + unit + UI (manual demo พร้อม screenshot) | 2 | implement แล้ว — AC-F11-01–08 · TEST-F11-01–09 ผ่าน (@7410808); AC-F11-09 · UI ทำแล้ว ผ่าน Vitest (@173a82a) รอ screenshot TEST-F11-10 และ review |
 | FR-14 streak | F-13 | 3 | กำหนดก่อน implement | 3 | วางแผน |
 | FR-15 สรุปและกรอง | F-14 | 3 | กำหนดก่อน implement | 3 | วางแผน |
 | FR-16 ตารางเตือน | F-15 | 3 | กำหนดก่อน implement | 3 | วางแผน |
