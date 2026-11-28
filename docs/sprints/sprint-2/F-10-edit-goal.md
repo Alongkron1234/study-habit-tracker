@@ -2,7 +2,7 @@
 
 **Sprint:** 2 | **Issue:** #43 | **Branch:** `feature/f10-edit-goal`
 **อ้างอิง SRS:** FR-12, BR-03, BR-04, BR-05, BR-06, BR-08, NFR-01, NFR-06
-**เวอร์ชัน:** 1.1 | **วันที่แก้ล่าสุด:** 2026-11-28
+**เวอร์ชัน:** 1.2 | **วันที่แก้ล่าสุด:** 2026-11-28
 **ผู้ทำ:** Alongkron1234 | **ผู้ review:** atiwit
 
 ---
@@ -18,8 +18,8 @@ Participant แก้ยอดเป้าหมาย (`target_minutes`) หร
 ใช้ middleware จาก F-02 แบบเดียวกับ F-04/F-05: `requireAuth` → `requireRole('participant')` → `ownedBy(goalOwner)`
 
 Workflow ฝั่ง UI (ดู §2 UI):
-1. Participant เปิดหน้ารายละเอียด goal ของตนเอง (goal ที่ active จะมีปุ่ม "แก้ไขเป้าหมาย")
-2. กดปุ่ม → ฟอร์มแสดงยอดเป้าหมายและวันสิ้นสุดปัจจุบัน → แก้ แล้วกด "บันทึก" → `PATCH`
+1. Participant เปิดหน้ารายละเอียด goal ของตนเอง (goal ที่ active จะมีปุ่ม "Edit goal")
+2. กดปุ่ม → ฟอร์มแสดงยอดเป้าหมายและวันสิ้นสุดปัจจุบัน → แก้ แล้วกด "Save" → `PATCH`
 3. สำเร็จ: ปิดฟอร์ม แสดงค่าใหม่และรีเฟรช progress / ผิดพลาด: แสดงข้อความใต้ช่องที่ผิด
 
 ### กฎและการตัดสินใจ (ขอให้ reviewer ยืนยัน)
@@ -40,7 +40,7 @@ Workflow ฝั่ง UI (ดู §2 UI):
 | S-12 | "วันนี้" ใช้ `todayBangkok()` จาก `src/lib/dates.js` ส่วนเทสต์ใช้ `todayBkk()` จาก `helpers/fixtures.js` ซึ่งต้องคืนค่าเดียวกัน (Asia/Bangkok, `YYYY-MM-DD`) | แบบเดียวกับ F-05 S-2 |
 | S-13 | ข้อความใน `fields` เป็นค่าคงที่ ไม่ใช้ `err.message` ของ library | แบบเดียวกับ F-05 S-10 |
 | S-14 | ลำดับการตอบเมื่อผิดหลายข้อ: 401 → 403 → 404 → 409 (S-1) → 400 | ให้ผลที่ทำนายได้ และไม่เปิดเผยข้อมูลของ goal ที่ไม่ใช่ของตน |
-| S-15 | UI แสดงปุ่ม "แก้ไขเป้าหมาย" เฉพาะ goal ที่ active แต่ backend ยังตรวจ S-1 เองเสมอ (UI ไม่ใช่การป้องกัน) | BR-08, NFR-01 |
+| S-15 | UI แสดงปุ่ม "Edit goal" เฉพาะ goal ที่ active แต่ backend ยังตรวจ S-1 เองเสมอ (UI ไม่ใช่การป้องกัน) | BR-08, NFR-01 |
 
 ### ผลต่อ feature อื่น (ตรวจแล้ว ไม่ต้องแก้ contract อื่น)
 
@@ -94,11 +94,11 @@ F-04 (`routes/goals.js`, `validateGoal`, สถานะที่คำนวณ
 |---|---|
 | ตำแหน่ง | การ์ดข้อมูลเป้าหมายในหน้ารายละเอียด goal ของ Participant |
 | ภาษา | ข้อความบนหน้าจอใช้ภาษาเดียวกับหน้าปัจจุบัน (อังกฤษ) ข้อความภาษาไทยในตารางนี้เป็นความหมายที่ต้องการ |
-| ปุ่ม | "แก้ไขเป้าหมาย" แสดงเฉพาะ goal ที่ active (S-15) |
-| ฟอร์ม | ช่องตัวเลข "ยอดเป้าหมาย (นาที)" และช่องวันที่ "วันสิ้นสุด" เริ่มต้นด้วยค่าปัจจุบัน; ปุ่ม "บันทึก" / "ยกเลิก" |
+| ปุ่ม | "Edit goal" แสดงเฉพาะ goal ที่ active (S-15) |
+| ฟอร์ม | ช่องตัวเลข "Target minutes" และช่องวันที่ "End date" เริ่มต้นด้วยค่าปัจจุบัน; ปุ่ม "Save" / "Cancel" |
 | สำเร็จ | ปิดฟอร์ม แสดงค่าใหม่ และรีเฟรช progress |
-| ผิดพลาด | 400: แสดงข้อความของ `fields.<ชื่อ>` ใต้ช่องนั้น **ผ่าน `friendlyFields()` ใน `frontend/src/lib/messages.js`** แบบเดียวกับหน้าอื่น (ไม่แสดงข้อความดิบของ API); 409: แสดง "เป้าหมายนี้จบแล้ว แก้ไขไม่ได้" แล้วรีเฟรชหน้า |
-| ข้อความที่ผู้ใช้เห็น | `positive integer` → "Enter a whole number greater than 0." (มีอยู่แล้ว); เพิ่มใน `messages.js`: `must not exceed 350400` → "A goal can be at most 350400 minutes." และ `end_date` + `must not be in the past` → "The end date cannot be in the past." **ข้อควรระวัง:** ปัจจุบัน `FRIENDLY` map ด้วยข้อความอย่างเดียว และ `must not be in the past` แปลเป็น "The start date cannot be in the past." ทุก field ต้องเพิ่มการ map ตาม field (เช่น `FRIENDLY_BY_FIELD['end_date']`) ก่อน fallback ไป `FRIENDLY` โดยไม่เปลี่ยนผลของ `start_date` ใน F-04 |
+| ผิดพลาด | 400: แสดงข้อความของ `fields.<ชื่อ>` ใต้ช่องนั้น **ผ่าน `friendlyFields()` ใน `frontend/src/lib/messages.js`** แบบเดียวกับหน้าอื่น (ไม่แสดงข้อความดิบของ API); 409: แสดง "This goal has ended and can no longer be edited." ปิดฟอร์มและรีเฟรช goal (ปุ่ม Edit goal จะหายไป) |
+| ข้อความที่ผู้ใช้เห็น | `positive integer` → "Enter a whole number greater than 0." (มีอยู่แล้ว); `must not exceed 350400` → "The target cannot exceed 350,400 minutes (960 minutes a day for 365 days)." (เพิ่มไปแล้วในบั๊ก #42 / PR #47 ไม่ต้องเพิ่มซ้ำ); เพิ่มใน `messages.js`: `end_date` + `must not be in the past` → "The end date cannot be in the past." **ข้อควรระวัง:** ปัจจุบัน `FRIENDLY` map ด้วยข้อความอย่างเดียว และ `must not be in the past` แปลเป็น "The start date cannot be in the past." ทุก field ต้องเพิ่มการ map ตาม field (เช่น `FRIENDLY_BY_FIELD['end_date']`) ก่อน fallback ไป `FRIENDLY` โดยไม่เปลี่ยนผลของ `start_date` ใน F-04 |
 
 ### ผลต่อโครงสร้างโค้ด
 
@@ -160,19 +160,19 @@ F-04 (`routes/goals.js`, `validateGoal`, สถานะที่คำนวณ
 | **TEST-F10-08d** | AC-F10-08 | API integration | ไม่ login | `PATCH /api/goals/1` | 401 (เพิ่ม `['patch','/api/goals/1']` ใน `PROTECTED_ENDPOINTS` ของ `rbac.test.js`) |
 | **TEST-F10-09** | AC-F10-04, AC-F10-05, AC-F10-06 | Unit | – | `validateGoalUpdate` กับ target 0/1/1.5/"1"/null/350400/350401; end_date รูปแบบผิด, ก่อน start, ระยะเวลา 365 และ 366 วัน, ก่อนวันนี้, = วันนี้ และกรณีผิดหลายข้อใน end_date (ตรวจว่าได้ข้อความแรกตาม S-7); field เกิน; body ว่าง; ผิดหลาย field | ข้อความตรงตาม S-2 ถึง S-8 |
 | **TEST-F10-10** | AC-F10-09 | UI (manual demo พร้อม screenshot; ใช้ E2E ถ้าโปรเจกต์มี) | Participant, goal active มี entry | แก้ยอดเป้าหมายเป็นค่าใหม่ → reload; ใส่ 0 → บันทึก; ตั้งวันสิ้นสุดเป็นวันที่ผ่านมาแล้ว → บันทึก; เปิด goal ที่จบแล้ว | ค่าใหม่และ progress อัปเดตและคงอยู่หลัง reload; 0 แสดง "Enter a whole number greater than 0." ใต้ช่อง; วันสิ้นสุดในอดีตแสดง "The end date cannot be in the past." (ไม่ใช่ "start date"); goal ที่จบแล้วไม่มีปุ่มแก้ไข |
-| **TEST-F10-11** | AC-F10-09 | Frontend unit (vitest) | – | `friendlyFields({end_date: "must not be in the past"})`, `friendlyFields({start_date: "must not be in the past"})`, `friendlyFields({target_minutes: "must not exceed 350400"})` | "The end date cannot be in the past."; "The start date cannot be in the past." (เดิม); "A goal can be at most 350400 minutes." |
+| **TEST-F10-11** | AC-F10-09 | Frontend unit (vitest) | – | `friendlyFields({end_date: "must not be in the past"})`, `friendlyFields({start_date: "must not be in the past"})`, `friendlyFields({target_minutes: "must not exceed 350400"})` | "The end date cannot be in the past."; "The start date cannot be in the past." (เดิม); "The target cannot exceed 350,400 minutes (960 minutes a day for 365 days)." |
 
 ---
 
 ## 5. Definition of Done และหลักฐาน
 
-- [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — `<sha>`
-- [ ] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F10-10 แต่รวม TEST-F10-11) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — `<sha>`, ผลรัน `evidence/F-10-red-run.txt`
-- [ ] โค้ดครบตาม §2 (API, Logic, UI) และ `npm test` ผ่านทุกเทสต์ — `<sha>`, ผลรัน `evidence/F-10-green-run.txt` (ระบุจำนวน passed/failed/skipped)
-- [ ] TEST-F10-10 รันบน candidate แล้ว พร้อม screenshot ที่ระบุ version — `evidence/F-10-ui-*.png`
-- [ ] **ทั้ง test suite** ยังผ่าน (regression ของ F-01 ถึง F-07 และ feature อื่นใน Sprint 2 โดยเฉพาะ BR-03, BR-04, BR-05, BR-06, BR-08) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
-- [ ] response ไม่มี `user_id` หรือ secret; error ไม่มี SQL/stack
-- [ ] `docs/traceability.md` อัปเดตแถว FR-12 ด้วย AC/TEST, ผลรัน และ commit SHA
+- [x] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — v1.0 `a664561`, v1.1 `c173c6b` (ก่อนเทสต์ `ba0c5b6`)
+- [x] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F10-10 แต่รวม TEST-F10-11) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — backend `ba0c5b6`, ผลรัน `evidence/F-10-red-run.txt` (55 failed / 225 เดิมผ่านครบ); UI `9da4bb6`, ผลรัน `evidence/F-10-ui-red-run.txt` (8 failed / 28 passed; ข้อความเพดาน 350400 ผ่านแล้วตั้งแต่ RED เพราะบั๊ก #42 เพิ่มไว้)
+- [x] โค้ดครบตาม §2 (API, Logic, UI) และ `npm test` ผ่านทุกเทสต์ — backend `41b5139`, ผลรัน `evidence/F-10-green-run.txt` (280 passed / 0 failed / 0 skipped); UI `471121f` (+ style `e50a248`), ผลรัน `evidence/F-10-ui-green-run.txt` (frontend 36 passed / 0 failed)
+- [x] TEST-F10-10 รันบน candidate แล้ว พร้อม screenshot ที่ระบุ version — `evidence/F-10-ui-1-before-e50a248.png`, `F-10-ui-2-target-zero-error-e50a248.png`, `F-10-ui-3-end-date-past-error-e50a248.png`, `F-10-ui-4-saved-after-reload-e50a248.png`, `F-10-ui-5-ended-goal-no-button-e50a248.png`
+- [x] **ทั้ง test suite** ยังผ่าน (regression ของ F-01 ถึง F-07 และ feature อื่นใน Sprint 2 โดยเฉพาะ BR-03, BR-04, BR-05, BR-06, BR-08) และ endpoint ใหม่อยู่ใน `PROTECTED_ENDPOINTS`
+- [x] response ไม่มี `user_id` หรือ secret; error ไม่มี SQL/stack (TEST-F10-01, 04b)
+- [x] `docs/traceability.md` อัปเดตแถว FR-12 ด้วย AC/TEST, ผลรัน และ commit SHA
 - [ ] PR เข้า `sprint-2-staging` ผ่าน review จากเพื่อน — PR #<เลข>
 - [ ] merge เข้า `main` อยู่ใน release Sprint 2 (tag `<tag>`) และปิด Issue #<เลข> แล้ว
 
@@ -184,3 +184,4 @@ F-04 (`routes/goals.js`, `validateGoal`, สถานะที่คำนวณ
 |---|---|---|---|
 | 2026-11-28 | 1.0 | สร้างร่าง | ก่อนเริ่ม implement |
 | 2026-11-28 | 1.1 | S-4 เพิ่มเพดาน 350400 + TEST-F10-04(b,c); S-9 ให้ `UPDATE` มีเงื่อนไข active + TEST-F10-07c; §2 UI ใช้ `friendlyFields()`, เพิ่มข้อความใหม่และการ map ตาม field ใน `messages.js`, หมายเหตุภาษา; TEST-F10-10 คาดข้อความที่แปลแล้ว; เพิ่ม TEST-F10-11 | review: ค่าเกินช่วง `INTEGER` ได้ 500, race ตอนเที่ยงคืน, UI จริงแสดงข้อความผ่าน `messages.js` และ `must not be in the past` ถูกแปลเป็น "start date" ทุก field |
+| 2026-11-28 | 1.2 | (1) ชื่อปุ่ม ป้ายช่อง และข้อความ 409 ใน §1 และ §2 UI เปลี่ยนเป็นภาษาอังกฤษตาม UI (Edit goal / Target minutes / End date / Save / Cancel / "This goal has ended and can no longer be edited."); (2) ข้อความเพดาน `must not exceed 350400` ใน §2 UI และ TEST-F10-11 ใช้ข้อความที่มีอยู่แล้วจากบั๊ก #42 (PR #47) แทนข้อความใหม่ | ทั้งแอปเป็นภาษาอังกฤษ (แนวเดียวกับ F-11 v1.3) และไม่ให้มีข้อความเพดานสองแบบ |
