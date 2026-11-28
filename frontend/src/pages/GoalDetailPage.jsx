@@ -298,12 +298,12 @@ export function GoalDetailPage() {
         </p>
       )}
       {!isEnded && !editingGoal && (
-        <button type="button" className="btn-secondary" onClick={startGoalEdit}>
+        <button type="button" className="btn-secondary goal-edit-btn" onClick={startGoalEdit}>
           Edit goal
         </button>
       )}
       {editingGoal && (
-        <form onSubmit={handleGoalSave} className="dashboard-card form-card" data-testid="goal-edit-form">
+        <form onSubmit={handleGoalSave} className="dashboard-card form-card goal-edit-form" data-testid="goal-edit-form">
           <h3>Edit Goal</h3>
           <div className="form-row">
             <div className="form-group">
@@ -333,7 +333,7 @@ export function GoalDetailPage() {
             <p className="field-error">{goalFieldErrors.body || goalFormError}</p>
           )}
           <div className="entry-actions">
-            <button type="submit" disabled={goalSaving}>
+            <button type="submit" className="btn-primary" disabled={goalSaving}>
               Save
             </button>
             <button type="button" className="btn-secondary" onClick={cancelGoalEdit} disabled={goalSaving}>
