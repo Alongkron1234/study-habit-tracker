@@ -1,9 +1,9 @@
 # Contract: F-11 แก้ไข/ลบ entry
 
-**Sprint:** 2 | **Issue:** #<เลข issue> | **Branch:** `feature/f11-edit-delete-entry`
+**Sprint:** 2 | **Issue:** #40 | **Branch:** `feature/f11-edit-delete-entry`
 **อ้างอิง SRS:** FR-13, BR-01, BR-02, BR-03, BR-05, BR-06, BR-08, NFR-01, NFR-06
-**เวอร์ชัน:** 1.2 | **สถานะ:** อนุมัติก่อน implement เมื่อ <วันที่> | **วันที่แก้ล่าสุด:** 2026-11-27
-**ผู้ทำ:** <ชื่อ> | **ผู้ review:** <ชื่อ>
+**เวอร์ชัน:** 1.2 | **วันที่แก้ล่าสุด:** 2026-11-28
+**ผู้ทำ:** Alongkron1234 | **ผู้ review:** atiwit
 
 ---
 
@@ -147,7 +147,7 @@ F-05 (`routes/entries.js`, ตรรกะตรวจ minutes ใน `validateE
 
 ## 5. Definition of Done และหลักฐาน
 
-- [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — v1.2 `<sha>` (v1.0 และ v1.1 เป็นร่างที่ยังไม่ถูก commit)
+- [ ] contract นี้ commit ก่อนโค้ดและเทสต์ (commit แยก) — v1.2 `00ed536` (v1.0 และ v1.1 เป็นร่างที่ยังไม่ถูก commit)
 - [ ] เทสต์ทุกข้อใน §4 (ยกเว้น TEST-F11-10) เขียนก่อนโค้ด และบันทึกผลรันที่ **fail** พร้อม commit — `<sha>`, ผลรัน `evidence/F-11-red-run.txt`
 - [ ] โค้ดครบตาม §2 (API, Logic, UI) และ `npm test` ผ่านทุกเทสต์ — `<sha>`, ผลรัน `evidence/F-11-green-run.txt` (ระบุจำนวน passed/failed/skipped)
 - [ ] TEST-F11-10 รันบน candidate แล้ว พร้อม screenshot ที่ระบุ version — `evidence/F-11-ui-*.png`
@@ -155,7 +155,7 @@ F-05 (`routes/entries.js`, ตรรกะตรวจ minutes ใน `validateE
 - [ ] response ไม่มี `goal_id`, `user_id` หรือ secret; error ไม่มี SQL/stack
 - [ ] `docs/traceability.md` อัปเดตแถว FR-13 ด้วย AC/TEST, ผลรัน และ commit SHA
 - [ ] PR เข้า `sprint-2-staging` ผ่าน review จากเพื่อน — PR #<เลข>
-- [ ] merge เข้า `main` อยู่ใน release Sprint 2 (tag `<tag>`) และปิด Issue #<เลข> แล้ว
+- [ ] merge เข้า `main` อยู่ใน release Sprint 2 (tag `<tag>`) และปิด Issue #40 แล้ว
 
 ---
 
