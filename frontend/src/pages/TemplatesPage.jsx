@@ -257,6 +257,7 @@ export function TemplatesPage() {
                     }}
                   >
                     <div className="form-group">
+                      <span className="edit-hint" aria-hidden="true">Name</span>
                       <input
                         type="text"
                         aria-label="Edit template name"
@@ -267,6 +268,7 @@ export function TemplatesPage() {
                     </div>
                     <div className="form-row">
                       <div className="form-group">
+                        <span className="edit-hint" aria-hidden="true">Min minutes</span>
                         <input
                           type="number"
                           aria-label="Edit min minutes"
@@ -276,6 +278,7 @@ export function TemplatesPage() {
                         {editErrors.min_value && <span className="field-error">{editErrors.min_value}</span>}
                       </div>
                       <div className="form-group">
+                        <span className="edit-hint" aria-hidden="true">Max minutes</span>
                         <input
                           type="number"
                           aria-label="Edit max minutes"

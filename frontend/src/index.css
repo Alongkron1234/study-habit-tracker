@@ -561,3 +561,15 @@ body {
 .goal-edit-form .entry-actions button {
   padding: 0.5rem 1rem;
 }
+
+/* Edit template (F-09) */
+.template-edit-form .edit-hint {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.15rem;
+}
+
+.template-actions {
+  margin-top: 0.75rem;
+}
